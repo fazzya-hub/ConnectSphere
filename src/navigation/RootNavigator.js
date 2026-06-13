@@ -14,8 +14,7 @@ import { colors } from '../theme';
 const Stack = createNativeStackNavigator();
 
 const modalScreenOptions = {
-  headerStyle: { backgroundColor: colors.surface },
-  headerTintColor: colors.textPrimary,
+  headerShown: false,
   contentStyle: { backgroundColor: colors.background },
 };
 
@@ -37,32 +36,32 @@ export default function RootNavigator() {
           <Stack.Screen
             name="Chat"
             component={ChatScreen}
-            options={{ ...modalScreenOptions, headerShown: true, title: 'Chat' }}
+            options={modalScreenOptions}
           />
           <Stack.Screen
             name="PostDetail"
             component={PostDetailScreen}
-            options={{ ...modalScreenOptions, headerShown: true, title: 'Post' }}
+            options={modalScreenOptions}
           />
           <Stack.Screen
             name="UserProfile"
             component={UserProfileScreen}
-            options={{ ...modalScreenOptions, headerShown: true, title: 'Profil' }}
+            options={modalScreenOptions}
           />
           <Stack.Screen
             name="Followers"
             component={FollowersScreen}
-            options={{ ...modalScreenOptions, headerShown: true, title: 'Followers' }}
+            options={modalScreenOptions}
           />
           <Stack.Screen
             name="Following"
             component={FollowingScreen}
-            options={{ ...modalScreenOptions, headerShown: true, title: 'Following' }}
+            options={modalScreenOptions}
           />
           <Stack.Screen
             name="FollowRequests"
             component={FollowRequestScreen}
-            options={{ ...modalScreenOptions, headerShown: true, title: 'Permintaan Follow' }}
+            options={modalScreenOptions}
           />
         </>
       )}

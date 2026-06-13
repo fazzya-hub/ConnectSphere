@@ -11,17 +11,15 @@ const Tab = createBottomTabNavigator();
 export default function MainTab() {
   return (
     <Tab.Navigator
-      screenOptions={({ navigation }) => ({
-        headerStyle: { backgroundColor: colors.surface },
-        headerTintColor: colors.textPrimary,
-        headerShown: true,
+      screenOptions={{
+        headerShown: false,
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.border,
         },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textSecondary,
-      })}
+      }}
     >
       <Tab.Screen
         name="Home"

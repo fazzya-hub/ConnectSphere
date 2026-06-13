@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import Button from '../../components/common/Button';
 import { colors, typography, spacing } from '../../theme';
@@ -7,20 +8,26 @@ export default function ChatScreen() {
   const navigation = useNavigation();
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Chat</Text>
-      <Text style={styles.subtitle}>Pesan akan ditampilkan di sini</Text>
-      
-      {/* TEMPORARY: Back to inbox */}
-      <View style={styles.navSection}>
-        <Text style={styles.navLabel}>Sementara - Kembali</Text>
-        <Button title="Kembali ke Inbox" onPress={() => navigation.goBack()} />
-      </View>
-    </ScrollView>
+    <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <ScrollView style={styles.container}>
+        <Text style={styles.title}>Chat</Text>
+        <Text style={styles.subtitle}>Pesan akan ditampilkan di sini</Text>
+        
+        {/* TEMPORARY: Back to inbox */}
+        <View style={styles.navSection}>
+          <Text style={styles.navLabel}>Sementara - Kembali</Text>
+          <Button title="Kembali ke Inbox" onPress={() => navigation.goBack()} />
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: colors.background,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.background,
