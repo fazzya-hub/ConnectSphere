@@ -9,6 +9,7 @@ import {
   updateProfile,
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth, db } from '../config/firebase';
 
 /**
@@ -164,11 +165,15 @@ export async function resetPassword(email) {
  */
 export async function logout() {
   try {
+    try {
+      await GoogleSignin.signOut();
+    } catch (_) {
+    }
     await signOut(auth);
     return { data: true, error: null };
   } catch (error) {
     console.error('[authService] logout error:', error.code, error.message);
-    return { data: null, error: error.code || error.message };
+    return { data: null, error: error.message };
   }
 }
 
