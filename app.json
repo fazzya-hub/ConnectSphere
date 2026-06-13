@@ -2,6 +2,7 @@
   "expo": {
     "name": "ConnectSphere",
     "slug": "ConnectSphere",
+    "scheme": "connectsphere",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -20,14 +21,23 @@
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#ffffff"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "package": "com.ryuvyyn.ConnectSphere"
     },
     "web": {
       "favicon": "./assets/favicon.png"
     },
     "plugins": [
       "expo-audio",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-asset",
+      "@react-native-google-signin/google-signin"
     ]
   }
 }

@@ -9,8 +9,7 @@ import {
   Alert,
   Pressable,
 } from 'react-native';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { useAuth } from '../../hooks/useAuth';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -18,7 +17,9 @@ import { colors, typography, spacing } from '../../theme';
 import { AUTH_STRINGS, AUTH_ERRORS } from '../../utils/constants';
 import { isValidEmail } from '../../utils/validators';
 
-WebBrowser.maybeCompleteAuthSession();
+GoogleSignin.configure({
+  webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
+});
 
 export default function LoginScreen({ navigation }) {
   const { login, googleSignIn } = useAuth();
@@ -28,30 +29,7 @@ export default function LoginScreen({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    expoClientId: process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID,
-    iosClientId: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID,
-    androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
-    webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
-  });
 
-  useEffect(() => {
-    async function handleGoogleResponse() {
-      if (response?.type !== 'success') return;
-      const idToken = response.authentication?.idToken;
-      if (!idToken) {
-        Alert.alert('Gagal', 'Token Google tidak ditemukan.');
-        return;
-      }
-      setGoogleLoading(true);
-      const { error } = await googleSignIn(idToken);
-      setGoogleLoading(false);
-      if (error) {
-        Alert.alert('Gagal', AUTH_ERRORS[error] || AUTH_ERRORS.default);
-      }
-    }
-    handleGoogleResponse();
-  }, [response, googleSignIn]);
 
   function validate() {
     const newErrors = {};
@@ -73,11 +51,37 @@ export default function LoginScreen({ navigation }) {
   }
 
   async function handleGoogleLogin() {
-    if (!request) {
-      Alert.alert('Gagal', 'Google Sign-In belum dikonfigurasi. Cek file .env');
-      return;
+    try {
+      setGoogleLoading(true);
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+      const userInfo = await GoogleSignin.signIn();
+      // GoogleSignin v11+ uses userInfo.data?.idToken, older uses userInfo.idToken
+      const idToken = userInfo.data?.idToken || userInfo.idToken;
+      
+      if (!idToken) {
+        Alert.alert('Gagal', 'Token Google tidak ditemukan.');
+        setGoogleLoading(false);
+        return;
+      }
+      
+      const { error } = await googleSignIn(idToken);
+      if (error) {
+        Alert.alert('Gagal', AUTH_ERRORS[error] || AUTH_ERRORS.default);
+      }
+    } catch (error) {
+      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+        // user cancelled the login flow
+      } else if (error.code === statusCodes.IN_PROGRESS) {
+        // operation (e.g. sign in) is in progress already
+      } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert('Gagal', 'Google Play Services tidak tersedia.');
+      } else {
+        Alert.alert('Gagal', 'Terjadi kesalahan saat login dengan Google.');
+        console.error(error);
+      }
+    } finally {
+      setGoogleLoading(false);
     }
-    await promptAsync();
   }
 
   return (
