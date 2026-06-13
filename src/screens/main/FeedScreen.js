@@ -1,23 +1,51 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import Button from '../../components/common/Button';
-import { colors, typography, spacing } from '../../theme';
+import { useEffect, useState } from 'react';
+import { FlatList, StyleSheet } from 'react-native';
+import PostCard from '../../components/feed/PostCard';
+import Loader from '../../components/common/Loader';
+import EmptyState from '../../components/common/EmptyState';
+import { useAuth } from '../../hooks/useAuth';
+import { useFeed } from '../../hooks/useFeed';
+import { getFollowingIds } from '../../services/firestoreService';
+import { colors } from '../../theme';
 
 export default function FeedScreen() {
-  const navigation = useNavigation();
+  const { user } = useAuth();
+  const [followingIds, setFollowingIds] = useState([]);
+
+  const { posts, fetchPosts, isLoading, isRefreshing } = useFeed(followingIds);
+
+  useEffect(() => {
+    if (!user?.uid) return;
+
+    getFollowingIds(user.uid).then(({ data }) => {
+      const ids = data || [];
+      // Selalu memanggil post milik sendiri
+      const withSelf = ids.includes(user.uid) ? ids : [...ids, user.uid];
+      setFollowingIds(withSelf);
+    });
+  }, [user?.uid]);
+
+  if (!user) return <Loader />;
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Feed</Text>
-      <Text style={styles.subtitle}>Konten dari user yang diikuti</Text>
-      
-      {/* TEMPORARY: Tap on post atau user profile */}
-      <View style={styles.navSection}>
-        <Text style={styles.navLabel}>Sementara - Testing Navigation</Text>
-        <Button title="Lihat Post" onPress={() => navigation.navigate('PostDetail', { postId: '1' })} />
-        <Button title="Lihat Profil User" onPress={() => navigation.navigate('UserProfile', { userId: '123' })} />
-      </View>
-    </ScrollView>
+    <FlatList
+      style={styles.container}
+      data={posts}
+      keyExtractor={(item) => item.id}
+      renderItem={({ item }) => <PostCard post={item} />}
+      removeClippedSubviews={true}
+      maxToRenderPerBatch={5}
+      windowSize={10}
+      initialNumToRender={5}
+      ListFooterComponent={isLoading && !isRefreshing ? <Loader size="small" /> : null}
+      refreshing={isRefreshing}
+      onRefresh={() => fetchPosts(true)}
+      ListEmptyComponent={
+        !isLoading && !isRefreshing
+          ? <EmptyState message="Belum ada post" />
+          : null
+      }
+    />
   );
 }
 
@@ -25,31 +53,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: spacing.lg,
-  },
-  title: {
-    color: colors.textPrimary,
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: typography.sizes.md,
-    marginTop: spacing.xs,
-    textAlign: 'center',
-  },
-  navSection: {
-    marginTop: spacing.xl,
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  navLabel: {
-    color: colors.primary,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
-    textAlign: 'center',
   },
 });

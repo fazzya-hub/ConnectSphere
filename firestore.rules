@@ -28,7 +28,11 @@ service cloud.firestore {
     match /posts/{postId} {
       allow read: if isAuthenticated() && !isBlocked(resource.data.authorId);
       allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
-      allow update: if isOwner(resource.data.authorId);
+      allow update: if isOwner(resource.data.authorId)
+        || (isAuthenticated() && (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount'])
+          || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentsCount'])
+        ));
       allow delete: if isOwner(resource.data.authorId);
 
       match /comments/{commentId} {
