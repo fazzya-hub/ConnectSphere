@@ -151,7 +151,7 @@ export default function PostDetailScreen() {
             Komentar ({comments.length})
           </Text>
           {comments.length === 0 ? (
-            <Text style={styles.noComments}>Belum ada komentar. Jadilah yang pertama!</Text>
+            <Text style={styles.noComments}>Belum ada komentar</Text>
           ) : (
             comments.map((comment) => (
               <CommentItem key={comment.id} comment={comment} />
