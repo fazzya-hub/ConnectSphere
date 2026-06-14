@@ -6,14 +6,19 @@ import {
   ScrollView,
   Pressable,
   Dimensions,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Avatar from '../../components/common/Avatar';
 import Button from '../../components/common/Button';
 import Loader from '../../components/common/Loader';
 import { useAuth } from '../../hooks/useAuth';
 import { getPostsByAuthor, getUserById } from '../../services/firestoreService';
+import { uploadProfilePhoto } from '../../services/storageService';
 import { colors, typography, spacing } from '../../theme';
 import { AUTH_STRINGS } from '../../utils/constants';
 
@@ -23,11 +28,12 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const GRID_ITEM_SIZE = Math.floor((SCREEN_WIDTH - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS);
 
 export default function ProfileScreen() {
-  const { user, signOut } = useAuth();
+  const { user, signOut, updateProfile } = useAuth();
   const navigation = useNavigation();
   const [profile, setProfile] = useState(user);
   const [posts, setPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
 
   const loadProfile = useCallback(async () => {
     if (!user?.uid) return;
@@ -49,16 +55,66 @@ export default function ProfileScreen() {
     navigation.navigate('PostDetail', { postId: post.id, post });
   }
 
+  async function handleChangeAvatar() {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Izin Diperlukan', 'Izinkan akses galeri untuk mengganti foto profil.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (result.canceled || !result.assets?.[0]) return;
+
+    setIsUploadingAvatar(true);
+    try {
+      const { data: downloadURL, error: uploadError } = await uploadProfilePhoto(user.uid, result.assets[0].uri);
+      if (uploadError) {
+        Alert.alert('Gagal', 'Gagal mengupload foto. Coba lagi.');
+        return;
+      }
+
+      const { error: updateError } = await updateProfile({ photoURL: downloadURL });
+      if (updateError) {
+        Alert.alert('Gagal', 'Gagal memperbarui profil. Coba lagi.');
+        return;
+      }
+
+      // Refresh the local profile state
+      setProfile(prev => ({ ...prev, photoURL: downloadURL }));
+    } catch (err) {
+      Alert.alert('Gagal', 'Terjadi kesalahan saat mengganti foto profil.');
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  }
+
   if (!user) return <Loader />;
 
   return (
     <ScrollView style={styles.container}>
       <View style={styles.profileHeader}>
-        <Avatar
-          uri={profile?.photoURL}
-          name={profile?.displayName || profile?.username}
-          size={88}
-        />
+        {/* Pressable Avatar */}
+        <Pressable style={styles.avatarWrapper} onPress={handleChangeAvatar} disabled={isUploadingAvatar}>
+          <Avatar
+            uri={profile?.photoURL}
+            name={profile?.displayName || profile?.username}
+            size={88}
+          />
+          {/* Edit badge overlay */}
+          <View style={styles.avatarEditBadge}>
+            {isUploadingAvatar ? (
+              <ActivityIndicator size={12} color={colors.textInverse} />
+            ) : (
+              <Ionicons name="camera" size={14} color={colors.textInverse} />
+            )}
+          </View>
+        </Pressable>
         <Text style={styles.displayName}>{profile?.displayName || profile?.username}</Text>
         <Text style={styles.username}>@{profile?.username}</Text>
         {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
@@ -144,6 +200,22 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: spacing.lg,
     paddingHorizontal: spacing.lg,
+  },
+  avatarWrapper: {
+    position: 'relative',
+  },
+  avatarEditBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: colors.background,
   },
   displayName: {
     color: colors.textPrimary,

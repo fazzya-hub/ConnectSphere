@@ -8,7 +8,7 @@ import {
   signInWithCredential,
   updateProfile,
 } from 'firebase/auth';
-import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, setDoc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { auth, db } from '../config/firebase';
 
@@ -192,4 +192,35 @@ export function subscribeToAuthState(callback) {
     const profile = await getUserProfile(firebaseUser.uid);
     callback(profile);
   });
+}
+
+/**
+ * Memperbarui profil user di Firebase Auth dan Firestore.
+ * @param {string} userId - UID user
+ * @param {Object} updates - Field yang akan diupdate (displayName, photoURL, bio, dll)
+ * @returns {Promise<{ data: Object|null, error: string|null }>}
+ */
+export async function updateUserProfile(userId, updates) {
+  try {
+    // Update Firebase Auth profile jika displayName atau photoURL berubah
+    const authUpdates = {};
+    if (updates.displayName !== undefined) authUpdates.displayName = updates.displayName;
+    if (updates.photoURL !== undefined) authUpdates.photoURL = updates.photoURL;
+
+    if (Object.keys(authUpdates).length > 0 && auth.currentUser) {
+      await updateProfile(auth.currentUser, authUpdates);
+    }
+
+    // Update Firestore user document
+    await updateDoc(doc(db, 'users', userId), {
+      ...updates,
+      updatedAt: serverTimestamp(),
+    });
+
+    const profile = await getUserProfile(userId);
+    return { data: profile, error: null };
+  } catch (error) {
+    console.error('[authService] updateUserProfile error:', error.code, error.message);
+    return { data: null, error: error.code || error.message };
+  }
 }

@@ -6,7 +6,9 @@ import {
   signInWithGoogle,
   resetPassword,
   logout,
+  updateUserProfile,
 } from '../services/authService';
+import { uploadProfilePhoto } from '../services/storageService';
 
 /**
  * Hook utama untuk operasi autentikasi.
@@ -48,6 +50,13 @@ export function useAuth() {
     return { error };
   }, [clearUser]);
 
+  const updateProfile = useCallback(async (updates) => {
+    if (!user?.uid) return { error: 'No user' };
+    const { data, error } = await updateUserProfile(user.uid, updates);
+    if (data) setUser(data);
+    return { data, error };
+  }, [user?.uid, setUser]);
+
   return {
     user,
     isAuthenticated,
@@ -57,5 +66,6 @@ export function useAuth() {
     googleSignIn,
     forgotPassword,
     signOut,
+    updateProfile,
   };
 }
