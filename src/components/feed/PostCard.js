@@ -5,19 +5,27 @@ import { useNavigation } from '@react-navigation/native';
 import Avatar from '../common/Avatar';
 import PostActions from './PostActions';
 import { getUserById } from '../../services/firestoreService';
+import { useAuth } from '../../hooks/useAuth';
 import { formatRelativeTime } from '../../utils/dateFormatter';
 import { colors, typography, spacing } from '../../theme';
 
 export default function PostCard({ post }) {
+  const { user } = useAuth();
   const navigation = useNavigation();
   const [author, setAuthor] = useState(null);
 
   useEffect(() => {
     if (!post.authorId) return;
-    getUserById(post.authorId).then(({ data }) => {
-      if (data) setAuthor(data);
-    });
-  }, [post.authorId]);
+    
+    // Perubahan Profile Picture untuk user yang sedang login realtime
+    if (user && post.authorId === user.uid) {
+      setAuthor(user);
+    } else {
+      getUserById(post.authorId).then(({ data }) => {
+        if (data) setAuthor(data);
+      });
+    }
+  }, [post.authorId, user]);
 
   function navigateToDetail() {
     navigation.navigate('PostDetail', { postId: post.id, post });
