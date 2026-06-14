@@ -24,12 +24,12 @@ export default function AuthStack() {
       <Stack.Screen
         name="Register"
         component={RegisterScreen}
-        options={{ title: 'Daftar' }}
+        options={{ headerShown: false }}
       />
       <Stack.Screen
         name="ForgotPassword"
         component={ForgotPasswordScreen}
-        options={{ title: 'Lupa Password' }}
+        options={{ headerShown: false }}
       />
     </Stack.Navigator>
   );

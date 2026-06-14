@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   Alert,
   Pressable,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { useAuth } from '../../hooks/useAuth';
 import Button from '../../components/common/Button';
@@ -25,11 +26,10 @@ export default function LoginScreen({ navigation }) {
   const { login, googleSignIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-
-
 
   function validate() {
     const newErrors = {};
@@ -93,48 +93,69 @@ export default function LoginScreen({ navigation }) {
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>{AUTH_STRINGS.loginTitle}</Text>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.brand}>ConnectSphere</Text>
+         </View>
 
+        {/* Email Input */}
         <Input
-          label={AUTH_STRINGS.emailLabel}
           value={email}
           onChangeText={setEmail}
-          placeholder={AUTH_STRINGS.emailPlaceholder}
+          placeholder="Email"
           keyboardType="email-address"
+          icon="mail-outline"
           error={errors.email}
         />
+
+        {/* Password Input */}
         <Input
-          label={AUTH_STRINGS.passwordLabel}
           value={password}
           onChangeText={setPassword}
-          placeholder={AUTH_STRINGS.passwordPlaceholder}
-          secureTextEntry
+          placeholder="Password"
+          secureTextEntry={!showPassword}
+          icon="lock-closed-outline"
           error={errors.password}
+          rightElement={
+            <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
+              <Ionicons
+                name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                size={20}
+                color={showPassword ? colors.primary : colors.textSecondary}
+              />
+            </Pressable>
+          }
         />
 
-        <Pressable onPress={() => navigation.navigate('ForgotPassword')}>
-          <Text style={styles.link}>{AUTH_STRINGS.forgotPasswordLink}</Text>
+        {/* Forgot Password Link */}
+        <Pressable onPress={() => navigation.navigate('ForgotPassword')} style={styles.forgotRow}>
+          <Text style={styles.forgotText}>{AUTH_STRINGS.forgotPasswordLink}</Text>
         </Pressable>
 
-        <Button title={AUTH_STRINGS.loginButton} onPress={handleLogin} loading={loading} />
+        {/* Primary Login Button */}
+        <Button title={AUTH_STRINGS.loginButton} onPress={handleLogin} loading={loading} style={styles.primaryButton} />
 
+        {/* Divider */}
         <View style={styles.divider}>
           <View style={styles.dividerLine} />
           <Text style={styles.dividerText}>atau</Text>
           <View style={styles.dividerLine} />
         </View>
 
+        {/* Google Login */}
         <Button
           title={AUTH_STRINGS.googleButton}
           onPress={handleGoogleLogin}
           variant="outline"
           loading={googleLoading}
+          style={styles.googleButton}
         />
 
+        {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>{AUTH_STRINGS.noAccount} </Text>
           <Pressable onPress={() => navigation.navigate('Register')}>
-            <Text style={styles.link}>{AUTH_STRINGS.registerLink}</Text>
+            <Text style={styles.footerLink}>{AUTH_STRINGS.registerLink}</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -146,22 +167,41 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   container: {
     flexGrow: 1,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
     justifyContent: 'center',
+    paddingVertical: spacing.xxl,
   },
-  title: {
-    color: colors.textPrimary,
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
+  header: {
+    alignItems: 'center',
     marginBottom: spacing.xl,
-    textAlign: 'center',
   },
-  link: {
+  brand: {
     color: colors.primary,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    fontSize: typography.sizes.xxl,
+    fontFamily: typography.fontFamily.bold,
+    letterSpacing: -0.5,
+  },
+  subtitle: {
+    color: colors.textSecondary,
+    fontSize: typography.sizes.md,
+    fontFamily: typography.fontFamily.regular,
+    marginTop: spacing.xs,
+  },
+  eyeButton: {
+    padding: spacing.xxs,
+  },
+  forgotRow: {
+    alignSelf: 'flex-end',
     marginBottom: spacing.lg,
-    textAlign: 'right',
+  },
+  forgotText: {
+    color: colors.primary,
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.fontFamily.semibold,
+    letterSpacing: 0.3,
+  },
+  primaryButton: {
+    borderRadius: 999,
   },
   divider: {
     flexDirection: 'row',
@@ -176,15 +216,27 @@ const styles = StyleSheet.create({
   dividerText: {
     color: colors.textSecondary,
     marginHorizontal: spacing.sm,
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.fontFamily.regular,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  googleButton: {
+    borderRadius: 999,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
   },
   footerText: {
     color: colors.textSecondary,
     fontSize: typography.sizes.sm,
+    fontFamily: typography.fontFamily.regular,
+  },
+  footerLink: {
+    color: colors.primary,
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.fontFamily.semibold,
   },
 });

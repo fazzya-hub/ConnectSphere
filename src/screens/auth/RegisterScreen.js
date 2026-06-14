@@ -8,7 +8,9 @@ import {
   ScrollView,
   Alert,
   Pressable,
+  TextInput,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -21,6 +23,7 @@ export default function RegisterScreen({ navigation }) {
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
 
@@ -55,43 +58,62 @@ export default function RegisterScreen({ navigation }) {
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.title}>{AUTH_STRINGS.registerTitle}</Text>
+        {/* Header */}
+        <Text style={styles.title}>Daftar Akun</Text>
 
+        {/* Username Input */}
         <Input
-          label={AUTH_STRINGS.usernameLabel}
           value={username}
           onChangeText={setUsername}
-          placeholder={AUTH_STRINGS.usernamePlaceholder}
-          autoCapitalize="none"
+          placeholder="Username"
+          icon="person-outline"
           error={errors.username}
         />
+
+        {/* Email Input */}
         <Input
-          label={AUTH_STRINGS.emailLabel}
           value={email}
           onChangeText={setEmail}
-          placeholder={AUTH_STRINGS.emailPlaceholder}
+          placeholder="Email"
           keyboardType="email-address"
+          icon="mail-outline"
           error={errors.email}
         />
+
+        {/* Password Input */}
         <Input
-          label={AUTH_STRINGS.passwordLabel}
           value={password}
           onChangeText={setPassword}
-          placeholder={AUTH_STRINGS.passwordPlaceholder}
-          secureTextEntry
+          placeholder="Password"
+          secureTextEntry={!showPassword}
+          icon="lock-closed-outline"
           error={errors.password}
+          rightElement={
+            <Pressable onPress={() => setShowPassword(!showPassword)} style={styles.eyeButton}>
+              <Ionicons
+                name={showPassword ? 'eye-outline' : 'eye-off-outline'}
+                size={20}
+                color={showPassword ? colors.primary : colors.textSecondary}
+              />
+            </Pressable>
+          }
         />
 
-        <Button
-          title={AUTH_STRINGS.registerButton}
-          onPress={handleRegister}
-          loading={loading}
-        />
+        {/* Register Button */}
+        <View style={styles.actionsSection}>
+          <Button
+            title={AUTH_STRINGS.registerButton}
+            onPress={handleRegister}
+            loading={loading}
+            style={styles.primaryButton}
+          />
+        </View>
 
+        {/* Footer */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>{AUTH_STRINGS.hasAccount} </Text>
           <Pressable onPress={() => navigation.navigate('Login')}>
-            <Text style={styles.link}>{AUTH_STRINGS.loginLink}</Text>
+            <Text style={styles.footerLink}>{AUTH_STRINGS.loginLink}</Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -103,28 +125,39 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   container: {
     flexGrow: 1,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
     justifyContent: 'center',
+    paddingVertical: spacing.xxl,
   },
   title: {
     color: colors.textPrimary,
     fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.xl,
+    fontFamily: typography.fontFamily.bold,
     textAlign: 'center',
+    marginBottom: spacing.xl,
+  },
+  eyeButton: {
+    padding: spacing.xxs,
+  },
+  actionsSection: {
+    marginTop: spacing.lg,
+  },
+  primaryButton: {
+    borderRadius: 999,
   },
   footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: spacing.lg,
+    marginTop: spacing.xl,
   },
   footerText: {
     color: colors.textSecondary,
-    fontSize: typography.sizes.sm,
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.fontFamily.regular,
   },
-  link: {
+  footerLink: {
     color: colors.primary,
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.fontFamily.semibold,
   },
 });

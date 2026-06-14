@@ -10,8 +10,8 @@ export default function MainDrawer() {
   return (
     <Drawer.Navigator
       screenOptions={{
-        headerStyle: { backgroundColor: colors.surface },
-        headerTintColor: colors.textPrimary,
+        headerStyle: { backgroundColor: colors.surfaceLight },
+        headerTintColor: colors.primary,
         drawerStyle: { backgroundColor: colors.surface },
         drawerActiveTintColor: colors.primary,
         drawerInactiveTintColor: colors.textSecondary,

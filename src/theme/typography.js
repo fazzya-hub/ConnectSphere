@@ -1,8 +1,9 @@
 export const typography = {
   fontFamily: {
-    regular: 'System',
-    medium: 'System',
-    bold: 'System',
+    regular: 'Sora_400Regular',
+    medium: 'Sora_500Medium',
+    semibold: 'Sora_600SemiBold',
+    bold: 'Sora_700Bold',
   },
   sizes: {
     xs: 11,

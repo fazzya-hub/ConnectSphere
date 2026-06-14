@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import {
+  View,
   Text,
   StyleSheet,
   KeyboardAvoidingView,
@@ -8,6 +9,7 @@ import {
   Alert,
   Pressable,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
@@ -54,17 +56,25 @@ export default function ForgotPasswordScreen({ navigation }) {
         contentContainerStyle={styles.container}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Icon */}
+        <View style={styles.iconSection}>
+          <View style={styles.iconCircle}>
+            <Ionicons name="lock-open-outline" size={32} color={colors.primary} />
+          </View>
+        </View>
+
         <Text style={styles.title}>{AUTH_STRINGS.forgotPasswordTitle}</Text>
         <Text style={styles.subtitle}>
           Masukkan email yang terdaftar. Kami akan mengirim link reset password.
         </Text>
 
+        {/* Email Input */}
         <Input
-          label={AUTH_STRINGS.emailLabel}
           value={email}
           onChangeText={setEmail}
           placeholder={AUTH_STRINGS.emailPlaceholder}
           keyboardType="email-address"
+          icon="mail-outline"
           error={error}
         />
 
@@ -72,10 +82,12 @@ export default function ForgotPasswordScreen({ navigation }) {
           title={AUTH_STRINGS.resetButton}
           onPress={handleReset}
           loading={loading}
+          style={styles.primaryButton}
         />
 
         <Pressable onPress={() => navigation.navigate('Login')} style={styles.backLink}>
-          <Text style={styles.link}>{AUTH_STRINGS.backToLogin}</Text>
+          <Ionicons name="arrow-back" size={16} color={colors.primary} style={{ marginRight: 4 }} />
+          <Text style={styles.backText}>{AUTH_STRINGS.backToLogin}</Text>
         </Pressable>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -86,29 +98,51 @@ const styles = StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   container: {
     flexGrow: 1,
-    padding: spacing.lg,
+    paddingHorizontal: spacing.lg,
+    justifyContent: 'center',
+    paddingVertical: spacing.xxl,
+  },
+  iconSection: {
+    alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  iconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
     color: colors.textPrimary,
     fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.sm,
+    fontFamily: typography.fontFamily.bold,
+    marginBottom: spacing.xs,
     textAlign: 'center',
   },
   subtitle: {
     color: colors.textSecondary,
     fontSize: typography.sizes.md,
+    fontFamily: typography.fontFamily.regular,
     textAlign: 'center',
     marginBottom: spacing.xl,
+    lineHeight: 22,
+  },
+  primaryButton: {
+    borderRadius: 999,
   },
   backLink: {
-    marginTop: spacing.lg,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.lg,
   },
-  link: {
+  backText: {
     color: colors.primary,
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.semibold,
   },
 });

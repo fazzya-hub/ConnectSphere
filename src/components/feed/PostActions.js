@@ -53,7 +53,7 @@ export default function PostActions({ post }) {
           <Ionicons 
             name={isLiked ? "heart" : "heart-outline"} 
             size={24} 
-            color={isLiked ? colors.error : colors.textPrimary} 
+            color={isLiked ? colors.liked : colors.textPrimary} 
           />
           <Text style={styles.actionText}>{likesCount}</Text>
         </Pressable>

@@ -1,4 +1,5 @@
 import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../../theme';
 
 export default function Input({
@@ -10,45 +11,67 @@ export default function Input({
   keyboardType = 'default',
   autoCapitalize = 'none',
   error,
+  icon,
+  rightElement,
 }) {
   return (
-    <View style={styles.container}>
+    <View style={styles.wrapper}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
-      <TextInput
-        style={[styles.input, error && styles.inputError]}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        placeholderTextColor={colors.textSecondary}
-        secureTextEntry={secureTextEntry}
-        keyboardType={keyboardType}
-        autoCapitalize={autoCapitalize}
-        autoCorrect={false}
-      />
+      <View style={[styles.inputContainer, error && styles.inputError]}>
+        {icon && (
+          <Ionicons 
+            name={icon} 
+            size={20} 
+            color={colors.textSecondary} 
+            style={styles.icon} 
+          />
+        )}
+        <TextInput
+          style={styles.input}
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={colors.textSecondary}
+          secureTextEntry={secureTextEntry}
+          keyboardType={keyboardType}
+          autoCapitalize={autoCapitalize}
+          autoCorrect={false}
+        />
+        {rightElement}
+      </View>
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  wrapper: {
     marginBottom: spacing.md,
   },
   label: {
     color: colors.textPrimary,
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
+    fontFamily: typography.fontFamily.medium,
     marginBottom: spacing.xs,
   },
-  input: {
+  inputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: colors.surface,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: 8,
+    borderColor: 'transparent',
+    height: 52,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm + 2,
+  },
+  icon: {
+    marginRight: spacing.sm,
+  },
+  input: {
+    flex: 1,
     color: colors.textPrimary,
     fontSize: typography.sizes.md,
+    fontFamily: typography.fontFamily.regular,
   },
   inputError: {
     borderColor: colors.error,
@@ -57,5 +80,6 @@ const styles = StyleSheet.create({
     color: colors.error,
     fontSize: typography.sizes.xs,
     marginTop: spacing.xxs,
+    marginLeft: spacing.md,
   },
 });
