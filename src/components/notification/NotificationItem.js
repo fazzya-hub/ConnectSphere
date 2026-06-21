@@ -4,14 +4,15 @@ import { Image } from 'expo-image';
 import { colors, typography, spacing } from '../../theme';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
+import { Ionicons } from '@expo/vector-icons';
 
 const ICON_MAP = {
-  like: { emoji: '❤️', color: colors.liked },
-  comment: { emoji: '💬', color: colors.primary },
-  follow: { emoji: '➕', color: colors.success },
-  follow_request: { emoji: '🔔', color: colors.warning },
-  follow_accept: { emoji: '✅', color: colors.success },
-  dm: { emoji: '✉️', color: colors.primary },
+  like: { icon: 'heart', color: colors.liked },
+  comment: { icon: 'chatbubble', color: colors.primary },
+  follow: { icon: 'person-add', color: colors.success },
+  follow_request: { icon: 'person-add-outline', color: colors.warning },
+  follow_accept: { icon: 'checkmark-circle', color: colors.success },
+  dm: { icon: 'mail', color: colors.primary },
 };
 
 const MSG_MAP = {
@@ -30,7 +31,7 @@ const MSG_MAP = {
  * @param {Function} props.onPress - Handler saat item ditekan
  */
 export default function NotificationItem({ notif, onPress }) {
-  const iconInfo = ICON_MAP[notif.type] || { emoji: '🔔', color: colors.textSecondary };
+  const iconInfo = ICON_MAP[notif.type] || { icon: 'bell', color: colors.textSecondary };
   const msg = MSG_MAP[notif.type] || 'Ada aktivitas baru.';
   const actorName = notif.actorName || 'Seseorang';
   const timeText = notif.createdAt?.toDate
@@ -53,7 +54,7 @@ export default function NotificationItem({ notif, onPress }) {
           </View>
         )}
         <View style={[styles.iconBadge, { backgroundColor: iconInfo.color }]}>
-          <Text style={styles.iconEmoji}>{iconInfo.emoji}</Text>
+          <Ionicons name={iconInfo.icon} size={11} color="#fff" />
         </View>
       </View>
 
