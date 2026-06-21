@@ -146,11 +146,11 @@ export async function respondToFollowRequest(requestId, action) {
 
     if (action === 'accepted') {
       // Beritahu si requester bahwa requestnya diterima
-      await createNotification({
-        type: 'follow_request_accepted',
+      createNotification({
+        type: 'follow_accept',
         recipientId: fromUserId,
         actorId: toUserId,
-      });
+      }).catch((e) => console.error('[socialService] accept notif error:', e));
     }
 
     return { data: true, error: null };

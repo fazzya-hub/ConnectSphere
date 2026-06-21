@@ -1,6 +1,8 @@
 import * as Notifications from 'expo-notifications';
+import Constants from 'expo-constants';
 import {
   doc,
+  getDoc,
   addDoc,
   updateDoc,
   getDocs,
@@ -33,7 +35,8 @@ export async function registerForPushNotificationsAsync() {
       return null;
     }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync();
+    const projectId = Constants.expoConfig?.extra?.eas?.projectId || '44d46c21-913e-4f02-a2ad-d1e51ab09d1d';
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     const token = tokenData.data;
 
     // Android: channel wajib dikonfigurasi
@@ -74,7 +77,7 @@ export async function saveFCMToken(userId, token) {
  * Membuat notifikasi in-app di Firestore.
  * Jika notifikasi serupa sudah ada (belum dibaca), group actors.
  * @param {Object} params
- * @param {string} params.type - 'like' | 'comment' | 'follow' | 'dm' | 'follow_request'
+ * @param {string} params.type - 'like' | 'comment' | 'follow' | 'dm' | 'follow_request' | 'follow_accept'
  * @param {string} params.recipientId - UID penerima notifikasi
  * @param {string} params.actorId - UID yang melakukan aksi
  * @param {string|null} [params.postId] - ID post terkait
@@ -94,6 +97,18 @@ export async function createNotification({
       return { data: null, error: null };
     }
 
+    // Cek preferensi notifikasi penerima
+    const prefKey =
+      type === 'follow' || type === 'follow_request' || type === 'follow_accept'
+        ? 'newFollower'
+        : type === 'like'
+        ? 'likes'
+        : type === 'comment'
+        ? 'comments'
+        : type === 'dm'
+        ? 'dm'
+        : null;
+
     // Cek apakah notif serupa sudah ada (grouping)
     const constraints = [
       where('type', '==', type),
@@ -108,15 +123,27 @@ export async function createNotification({
     const existingQuery = query(collection(db, 'notifications'), ...constraints);
     const existing = await getDocs(existingQuery);
 
+    let notifId = null;
+
     if (!existing.empty) {
       // Update notif yang ada — tambah actor (grouping)
-      const notifRef = existing.docs[0].ref;
-      await updateDoc(notifRef, {
+      const existingDoc = existing.docs[0];
+      const existingData = existingDoc.data();
+      const notifRef = existingDoc.ref;
+      notifId = existingDoc.id;
+
+      const hasActor = existingData.actorIds?.includes(actorId);
+
+      const updateData = {
         actorIds: arrayUnion(actorId),
-        actorCount: increment(1),
         updatedAt: serverTimestamp(),
-      });
-      return { data: notifRef.id, error: null };
+      };
+
+      if (!hasActor) {
+        updateData.actorCount = increment(1);
+      }
+
+      await updateDoc(notifRef, updateData);
     } else {
       // Buat notif baru
       const notifRef = await addDoc(collection(db, 'notifications'), {
@@ -130,8 +157,65 @@ export async function createNotification({
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
       });
-      return { data: notifRef.id, error: null };
+      notifId = notifRef.id;
     }
+
+    // --- Send Push Notification via Expo HTTP API ---
+    const userSnap = await getDoc(doc(db, 'users', recipientId));
+    if (userSnap.exists()) {
+      const userData = userSnap.data();
+      const token = userData.fcmToken;
+      const prefs = userData.notificationPrefs || {};
+
+      // Jika token ada dan user belum mematikan notifikasi tipe ini
+      if (token && (!prefKey || prefs[prefKey] !== false)) {
+        const actorSnap = await getDoc(doc(db, 'users', actorId));
+        const actorName = actorSnap.exists() ? actorSnap.data().displayName : 'Seseorang';
+
+        let title = 'Notifikasi Baru';
+        let body = '';
+
+        if (type === 'like') {
+          title = 'Suka Baru';
+          body = `${actorName} menyukai post Anda.`;
+        } else if (type === 'comment') {
+          title = 'Komentar Baru';
+          body = `${actorName} mengomentari post Anda.`;
+        } else if (type === 'follow') {
+          title = 'Pengikut Baru';
+          body = `${actorName} mulai mengikuti Anda.`;
+        } else if (type === 'follow_request') {
+          title = 'Permintaan Mengikuti';
+          body = `${actorName} meminta untuk mengikuti Anda.`;
+        } else if (type === 'follow_accept') {
+          title = 'Permintaan Diterima';
+          body = `${actorName} menerima permintaan mengikuti Anda.`;
+        } else if (type === 'dm') {
+          title = 'Pesan Baru';
+          body = `${actorName} mengirimkan pesan.`;
+        }
+
+        if (body) {
+          fetch('https://exp.host/--/api/v2/push/send', {
+            method: 'POST',
+            headers: {
+              Accept: 'application/json',
+              'Accept-encoding': 'gzip, deflate',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              to: token,
+              sound: 'default',
+              title,
+              body,
+              data: { type, postId, conversationId, actorId },
+            }),
+          }).catch((err) => console.error('[notificationService] push error:', err));
+        }
+      }
+    }
+
+    return { data: notifId, error: null };
   } catch (error) {
     console.error('[notificationService] createNotification error:', error.message);
     return { data: null, error: error.message };

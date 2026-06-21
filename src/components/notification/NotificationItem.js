@@ -10,7 +10,6 @@ const ICON_MAP = {
   comment: { emoji: '💬', color: colors.primary },
   follow: { emoji: '➕', color: colors.success },
   follow_request: { emoji: '🔔', color: colors.warning },
-  follow_request_accepted: { emoji: '✅', color: colors.success },
   follow_accept: { emoji: '✅', color: colors.success },
   dm: { emoji: '✉️', color: colors.primary },
 };
@@ -20,9 +19,7 @@ const MSG_MAP = {
   comment: 'mengomentari postingan Anda.',
   follow: 'mulai mengikuti Anda.',
   follow_request: 'meminta untuk mengikuti Anda.',
-  follow_request_accepted: 'Menerima permintaan mengikuti',
-  follow_accepted: 'Menerima permintaan mengikuti',
-  follow_accept: 'Menerima permintaan mengikuti',
+  follow_accept: 'menerima permintaan mengikuti Anda.',
   dm: 'mengirim pesan kepada Anda.',
 };
 

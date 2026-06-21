@@ -15,6 +15,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { createNotification } from './notificationService';
 
 /**
  * Membuat post baru di Firestore.
@@ -72,6 +73,23 @@ export async function toggleLike(userId, postId, isLiked) {
     }
 
     await batch.commit();
+
+    // Kirim notifikasi saat like (bukan unlike)
+    if (!isLiked) {
+      const postSnap = await getDoc(doc(db, 'posts', postId));
+      if (postSnap.exists()) {
+        const postData = postSnap.data();
+        if (postData.authorId && postData.authorId !== userId) {
+          createNotification({
+            type: 'like',
+            recipientId: postData.authorId,
+            actorId: userId,
+            postId,
+          }).catch((e) => console.error('[firestoreService] like notif error:', e));
+        }
+      }
+    }
+
     return { error: null };
   } catch (error) {
     console.error('[firestoreService] toggleLike error:', error.code, error.message);
@@ -104,16 +122,27 @@ export async function checkIsLiked(userId, postId) {
  */
 export async function addComment(postId, authorId, text) {
   try {
-    const commentsRef = collection(db, 'posts', postId, 'comments');
-    const newCommentRef = await addDoc(commentsRef, {
-      authorId,
-      text,
-      createdAt: serverTimestamp(),
-    });
-    await updateDoc(doc(db, 'posts', postId), {
-      commentsCount: increment(1),
-    });
-    return { data: newCommentRef.id, error: null };
+    const batch = writeBatch(db);
+    const commentRef = doc(collection(db, 'posts', postId, 'comments'));
+    batch.set(commentRef, { authorId, text, createdAt: serverTimestamp() });
+    batch.update(doc(db, 'posts', postId), { commentsCount: increment(1) });
+    await batch.commit();
+
+    // Kirim notifikasi komentar
+    const postSnap = await getDoc(doc(db, 'posts', postId));
+    if (postSnap.exists()) {
+      const postData = postSnap.data();
+      if (postData.authorId && postData.authorId !== authorId) {
+        createNotification({
+          type: 'comment',
+          recipientId: postData.authorId,
+          actorId: authorId,
+          postId,
+        }).catch((e) => console.error('[firestoreService] comment notif error:', e));
+      }
+    }
+
+    return { data: commentRef.id, error: null };
   } catch (error) {
     console.error('[firestoreService] addComment error:', error.code, error.message);
     return { data: null, error: error.message };

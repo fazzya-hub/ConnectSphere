@@ -28,7 +28,8 @@
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS"
       ],
-      "package": "com.ryuvyyn.ConnectSphere"
+      "package": "com.ryuvyyn.ConnectSphere",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -38,7 +39,13 @@
       "expo-web-browser",
       "expo-asset",
       "@react-native-google-signin/google-signin",
-      "expo-font"
-    ]
+      "expo-font",
+      "expo-notifications"
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "44d46c21-913e-4f02-a2ad-d1e51ab09d1d"
+      }
+    }
   }
 }
