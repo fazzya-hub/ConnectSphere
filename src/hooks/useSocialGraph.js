@@ -4,6 +4,7 @@ import {
   doc, getDoc, onSnapshot, orderBy,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
+import { getAllBlockedUserIds } from '../services/socialService';
 
 /**
  * Subscribe realtime ke daftar follower atau following user.
@@ -124,41 +125,40 @@ export function usePeopleYouMayKnow(currentUserId, followingIds) {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!currentUserId) { setIsLoading(false); return; }
+    if (!currentUserId || !followingIds || followingIds.length === 0) {
+      setSuggestions([]);
+      setIsLoading(false);
+      return;
+    }
 
     let cancelled = false;
 
     async function fetchSuggestions() {
+      setIsLoading(true);
       try {
         // Ambil follower dari user-user yang kita follow (mutual network)
         const sampleFollowing = followingIds.slice(0, 5);
-        let candidateIds = new Set();
+        const followerSets = await Promise.all(
+          sampleFollowing.map(uid =>
+            getDocs(query(collection(db, 'follows'), where('followingId', '==', uid), limit(10)))
+          )
+        );
 
-        if (sampleFollowing.length > 0) {
-          const followerSets = await Promise.all(
-            sampleFollowing.map(uid =>
-              getDocs(query(collection(db, 'follows'), where('followingId', '==', uid), limit(10)))
-            )
-          );
-          followerSets.forEach(snap => {
-            snap.docs.forEach(d => {
-              const { followerId } = d.data();
-              if (followerId !== currentUserId && !followingIds.includes(followerId)) {
-                candidateIds.add(followerId);
-              }
-            });
-          });
-        }
+        const { data: blockedIds } = await getAllBlockedUserIds(currentUserId);
 
-        // Jika belum cukup, ambil user acak
-        if (candidateIds.size < 5) {
-          const randomSnap = await getDocs(query(collection(db, 'users'), limit(20)));
-          randomSnap.docs.forEach(d => {
-            if (d.id !== currentUserId && !followingIds.includes(d.id) && !candidateIds.has(d.id)) {
-              candidateIds.add(d.id);
+        const candidateIds = new Set();
+        followerSets.forEach(snap => {
+          snap.docs.forEach(d => {
+            const { followerId } = d.data();
+            if (
+              followerId !== currentUserId && 
+              !followingIds.includes(followerId) &&
+              !blockedIds.has(followerId)
+            ) {
+              candidateIds.add(followerId);
             }
           });
-        }
+        });
 
         const userDocs = await Promise.all(
           [...candidateIds].slice(0, 10).map(uid => getDoc(doc(db, 'users', uid)))

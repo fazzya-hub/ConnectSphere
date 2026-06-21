@@ -13,7 +13,7 @@ import Loader from '../../components/common/Loader';
 import FollowButton from '../../components/social/FollowButton';
 import SocialGraphStats from '../../components/social/SocialGraphStats';
 import { getUserById, getPostsByAuthor } from '../../services/firestoreService';
-import { blockUser, unblockUser, muteUser, unmuteUser, syncFollowCounts } from '../../services/socialService';
+import { blockUser, unblockUser, muteUser, unmuteUser, syncFollowCounts, checkBlockStatus, checkHasBlocked } from '../../services/socialService';
 import { useMutualFollowers } from '../../hooks/useSocialGraph';
 import useAuthStore from '../../store/authStore';
 import { colors } from '../../theme/colors';
@@ -46,22 +46,33 @@ export default function UserProfileScreen() {
   const isSelf = currentUser?.uid === userId;
 
   const loadData = useCallback(async () => {
-    if (!userId) return;
+    if (!userId || !currentUser?.uid) return;
     setIsLoading(true);
     try {
-      // Auto-sync counts
+      // Cek apakah target memblokir kita
+      const isBlockedByTarget = await checkBlockStatus(currentUser.uid, userId);
+      if (isBlockedByTarget) {
+        setProfile({ isBlocked: true, username: 'Pengguna', displayName: 'Pengguna', photoURL: null, bio: '' });
+        setPosts([]);
+        setIsBlocked(false);
+        setIsMuted(false);
+        setIsLoading(false);
+        return;
+      }
+
+      // Auto-sync counts jika tidak diblokir
       await syncFollowCounts(userId);
 
       const { data: postsData } = await getPostsByAuthor(userId);
       setPosts(postsData || []);
 
-      // Cek status block/mute
-      if (currentUser?.uid && !isSelf) {
-        const [blockSnap, muteSnap] = await Promise.all([
-          getDoc(doc(db, 'blocks', `${currentUser.uid}_${userId}`)).catch(() => ({ exists: () => false })),
+      // Cek status apakah kita memblokir target / membisukan target
+      if (!isSelf) {
+        const [blockedByMe, muteSnap] = await Promise.all([
+          checkHasBlocked(currentUser.uid, userId),
           getDoc(doc(db, 'mutes', `${currentUser.uid}_${userId}`)).catch(() => ({ exists: () => false })),
         ]);
-        setIsBlocked(blockSnap.exists());
+        setIsBlocked(blockedByMe);
         setIsMuted(muteSnap.exists());
       }
     } catch (error) {
@@ -77,14 +88,27 @@ export default function UserProfileScreen() {
 
   // Real-time listener untuk profile data
   useEffect(() => {
-    if (!userId) return;
-    const unsubscribe = onSnapshot(doc(db, 'users', userId), (docSnap) => {
-      if (docSnap.exists()) {
-        setProfile({ id: docSnap.id, ...docSnap.data() });
+    if (!userId || !currentUser?.uid) return;
+    
+    let unsubProfile = () => {};
+    
+    async function initListener() {
+      const isBlockedByTarget = await checkBlockStatus(currentUser.uid, userId);
+      if (isBlockedByTarget) {
+        setProfile({ isBlocked: true, username: 'Pengguna', displayName: 'Pengguna', photoURL: null, bio: '' });
+        return;
       }
-    });
-    return () => unsubscribe();
-  }, [userId]);
+      
+      unsubProfile = onSnapshot(doc(db, 'users', userId), (docSnap) => {
+        if (docSnap.exists()) {
+          setProfile({ id: docSnap.id, ...docSnap.data() });
+        }
+      });
+    }
+    
+    initListener();
+    return () => unsubProfile();
+  }, [userId, currentUser?.uid]);
 
   async function handleBlock() {
     Alert.alert(
@@ -164,7 +188,7 @@ export default function UserProfileScreen() {
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.navTitle}>@{profile.username}</Text>
-        {!isSelf && (
+        {!isSelf && !profile?.isBlocked && (
           <TouchableOpacity onPress={showMoreOptions} style={styles.navBtn}>
             <Ionicons name="ellipsis-horizontal" size={22} color={colors.textPrimary} />
           </TouchableOpacity>
@@ -200,80 +224,88 @@ export default function UserProfileScreen() {
         {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
       </View>
 
-      {/* Mutual followers */}
-      {!isSelf && mutualCount > 0 && (
-        <SocialGraphStats mutualCount={mutualCount} mutualPreview={mutualPreview} />
-      )}
-
-      {/* Stats */}
-      <View style={styles.statsRow}>
-        <View style={styles.statItem}>
-          <Text style={styles.statCount}>{Math.max(0, profile.postsCount ?? 0)}</Text>
-          <Text style={styles.statLabel}>Post</Text>
+      {profile.isBlocked ? (
+        <View>
+          <Text style={styles.emptyGrid}>Pengguna tidak tersedia.</Text>
         </View>
-        <Pressable
-          style={styles.statItem}
-          onPress={() => navigation.navigate('Followers', { userId: profile.id })}
-        >
-          <Text style={styles.statCount}>{Math.max(0, profile.followersCount ?? 0)}</Text>
-          <Text style={styles.statLabel}>Followers</Text>
-        </Pressable>
-        <Pressable
-          style={styles.statItem}
-          onPress={() => navigation.navigate('Following', { userId: profile.id })}
-        >
-          <Text style={styles.statCount}>{Math.max(0, profile.followingCount ?? 0)}</Text>
-          <Text style={styles.statLabel}>Following</Text>
-        </Pressable>
-      </View>
+      ) : (
+        <>
+          {/* Mutual followers */}
+          {!isSelf && mutualCount > 0 && (
+            <SocialGraphStats mutualCount={mutualCount} mutualPreview={mutualPreview} />
+          )}
 
-      {/* Aksi */}
-      {!isSelf && !isBlocked && (
-        <View style={styles.actions}>
-          <FollowButton
-            targetUserId={userId}
-            isTargetPrivate={profile.isPrivate}
-            style={styles.actionBtn}
-          />
-          <TouchableOpacity
-            style={[styles.actionBtn, styles.msgBtn]}
-            onPress={() => navigation.navigate('Chat', { userId })}
-          >
-            <Text style={styles.msgBtnText}>Pesan</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-
-      {/* Post Grid */}
-      <View style={styles.gridSection}>
-        <Text style={styles.gridTitle}>Postingan</Text>
-        {posts.length === 0 ? (
-          <Text style={styles.emptyGrid}>Belum ada postingan.</Text>
-        ) : (
-          <View style={styles.grid}>
-            {posts.map((post, index) => {
-              const isLastInRow = (index + 1) % NUM_COLUMNS === 0;
-              return (
-                <Pressable
-                  key={post.id}
-                  onPress={() => navigation.navigate('PostDetail', { postId: post.id, post })}
-                  style={[
-                    styles.gridItem,
-                    !isLastInRow && { marginRight: GRID_GAP },
-                    index < posts.length - NUM_COLUMNS && { marginBottom: GRID_GAP },
-                  ]}
-                >
-                  <Image
-                    source={{ uri: post.imageURL }}
-                    style={styles.gridImage}
-                    contentFit="cover"
-                  />
-                </Pressable>
-              );
-            })}
+          {/* Stats */}
+          <View style={styles.statsRow}>
+            <View style={styles.statItem}>
+              <Text style={styles.statCount}>{Math.max(0, profile.postsCount ?? 0)}</Text>
+              <Text style={styles.statLabel}>Post</Text>
+            </View>
+            <Pressable
+              style={styles.statItem}
+              onPress={() => navigation.navigate('Followers', { userId: profile.id })}
+            >
+              <Text style={styles.statCount}>{Math.max(0, profile.followersCount ?? 0)}</Text>
+              <Text style={styles.statLabel}>Followers</Text>
+            </Pressable>
+            <Pressable
+              style={styles.statItem}
+              onPress={() => navigation.navigate('Following', { userId: profile.id })}
+            >
+              <Text style={styles.statCount}>{Math.max(0, profile.followingCount ?? 0)}</Text>
+              <Text style={styles.statLabel}>Following</Text>
+            </Pressable>
           </View>
-        )}
-      </View>
+
+          {/* Aksi */}
+          {!isSelf && !isBlocked && (
+            <View style={styles.actions}>
+              <FollowButton
+                targetUserId={userId}
+                isTargetPrivate={profile.isPrivate}
+                style={styles.actionBtn}
+              />
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.msgBtn]}
+                onPress={() => navigation.navigate('Chat', { userId })}
+              >
+                <Text style={styles.msgBtnText}>Pesan</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {/* Post Grid */}
+          <View style={styles.gridSection}>
+            <Text style={styles.gridTitle}>Postingan</Text>
+            {posts.length === 0 ? (
+              <Text style={styles.emptyGrid}>Belum ada postingan.</Text>
+            ) : (
+              <View style={styles.grid}>
+                {posts.map((post, index) => {
+                  const isLastInRow = (index + 1) % NUM_COLUMNS === 0;
+                  return (
+                    <Pressable
+                      key={post.id}
+                      onPress={() => navigation.navigate('PostDetail', { postId: post.id, post })}
+                      style={[
+                        styles.gridItem,
+                        !isLastInRow && { marginRight: GRID_GAP },
+                        index < posts.length - NUM_COLUMNS && { marginBottom: GRID_GAP },
+                      ]}
+                    >
+                      <Image
+                        source={{ uri: post.imageURL }}
+                        style={styles.gridImage}
+                        contentFit="cover"
+                      />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            )}
+          </View>
+        </>
+      )}
     </ScrollView>
   );
 }

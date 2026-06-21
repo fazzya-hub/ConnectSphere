@@ -289,11 +289,12 @@ export async function removeFromCloseFriends(currentUserId, targetUserId) {
 }
 
 /**
- * Search users by username atau displayName (prefix match).
+ * Search users by username atau displayName (prefix match), memfilter pengguna yang diblokir.
  * @param {string} queryText
+ * @param {string} currentUserId
  * @returns {Promise<{ data: Object[], error: string|null }>}
  */
-export async function searchUsers(queryText) {
+export async function searchUsers(queryText, currentUserId) {
   if (!queryText || queryText.trim().length === 0) return { data: [], error: null };
   try {
     const endText = queryText + '\uf8ff';
@@ -304,10 +305,81 @@ export async function searchUsers(queryText) {
       limit(20)
     );
     const snapshot = await getDocs(q);
-    const data = snapshot.docs.map(d => ({ id: d.id, uid: d.id, ...d.data() }));
+    let data = snapshot.docs.map(d => ({ id: d.id, uid: d.id, ...d.data() }));
+
+    if (currentUserId) {
+      data = data.filter(u => u.id !== currentUserId);
+      const { data: blockedIds } = await getAllBlockedUserIds(currentUserId);
+      data = data.filter(u => !blockedIds.has(u.id));
+    }
+    
     return { data, error: null };
   } catch (error) {
     console.error('[socialService] searchUsers error:', error.code, error.message);
     return { data: [], error: error.message };
+  }
+}
+
+/**
+ * Mengecek apakah ada status blokir antar dua user (salah satu memblokir yang lain).
+ * Karena query rule blocks membutuhkan blockerId/blockedId == currentUser, 
+ * fungsi ini akan me-return true jika doc exists atau kena permission error.
+ * @param {string} userA
+ * @param {string} userB
+ * @returns {Promise<boolean>}
+ */
+export async function checkBlockStatus(userA, userB) {
+  try {
+    // Hanya cek apakah userB memblokir userA
+    const blockRef2 = doc(db, 'blocks', `${userB}_${userA}`);
+    
+    const snap2 = await getDoc(blockRef2).catch(() => null);
+    if (snap2 && snap2.exists()) return true;
+    
+    return false;
+  } catch (error) {
+    console.error('[socialService] checkBlockStatus error:', error);
+    return false;
+  }
+}
+
+/**
+ * Mengecek apakah currentUser memblokir targetUser.
+ */
+export async function checkHasBlocked(currentUserId, targetUserId) {
+  try {
+    const blockRef = doc(db, 'blocks', `${currentUserId}_${targetUserId}`);
+    const snap = await getDoc(blockRef).catch(() => null);
+    if (snap && snap.exists()) return true;
+    return false;
+  } catch (error) {
+    console.error('[socialService] checkHasBlocked error:', error);
+    return false;
+  }
+}
+
+/**
+ * Mengambil SEMUA ID user yang diblokir oleh user saat ini, ATAU yang memblokir user saat ini.
+ * @param {string} userId
+ * @returns {Promise<{ data: Set<string>, error: string|null }>}
+ */
+export async function getAllBlockedUserIds(userId) {
+  try {
+    const q1 = query(collection(db, 'blocks'), where('blockerId', '==', userId));
+    const q2 = query(collection(db, 'blocks'), where('blockedId', '==', userId));
+    
+    const [snap1, snap2] = await Promise.all([
+      getDocs(q1),
+      getDocs(q2)
+    ]);
+    
+    const blockedIds = new Set();
+    snap1.docs.forEach((d) => blockedIds.add(d.data().blockedId));
+    snap2.docs.forEach((d) => blockedIds.add(d.data().blockerId));
+    
+    return { data: blockedIds, error: null };
+  } catch (error) {
+    console.error('[socialService] getAllBlockedUserIds error:', error.message);
+    return { data: new Set(), error: error.message };
   }
 }

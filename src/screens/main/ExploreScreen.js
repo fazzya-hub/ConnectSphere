@@ -11,7 +11,7 @@ import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
 import { usePeopleYouMayKnow, useFollowList } from '../../hooks/useSocialGraph';
 import useAuthStore from '../../store/authStore';
-import { searchUsers } from '../../services/socialService';
+import { searchUsers, getAllBlockedUserIds } from '../../services/socialService';
 import { searchPosts } from '../../services/firestoreService';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
@@ -48,11 +48,16 @@ export default function ExploreScreen() {
     setIsSearching(true);
     
     if (tab === 'users') {
-      const { data } = await searchUsers(searchText.trim().toLowerCase());
-      setSearchResults((data || []).filter(u => u.uid !== user?.uid && u.id !== user?.uid));
+      const { data } = await searchUsers(searchText.trim().toLowerCase(), user?.uid);
+      setSearchResults(data || []);
     } else {
       const { data } = await searchPosts(searchText.trim());
-      setSearchResults(data || []);
+      let fetchedPosts = data || [];
+      if (user?.uid) {
+        const { data: blockedIds } = await getAllBlockedUserIds(user.uid);
+        fetchedPosts = fetchedPosts.filter(post => !blockedIds.has(post.authorId));
+      }
+      setSearchResults(fetchedPosts);
     }
     
     setIsSearching(false);
