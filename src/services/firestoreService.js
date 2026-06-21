@@ -121,15 +121,29 @@ export async function addComment(postId, authorId, text) {
 }
 
 /**
+ * Subscribe real-time ke data sebuah post (likesCount, commentsCount, dll).
+ * @param {string} postId
+ * @param {Function} callback - dipanggil dengan data post terbaru
+ * @returns {Function} unsubscribe
+ */
+export function subscribeToPost(postId, callback) {
+  return onSnapshot(doc(db, 'posts', postId), (snapshot) => {
+    if (snapshot.exists()) {
+      callback({ id: snapshot.id, ...snapshot.data() });
+    }
+  });
+}
+
+/**
  * Subscribe secara realtime ke komentar sebuah post.
  * @param {string} postId
  * @param {function} callback
  * @returns {function} unsubscribe function
  */
-export function subscribeComments(postId, callback) {
+export function subscribeToComments(postId, callback) {
   const q = query(
     collection(db, 'posts', postId, 'comments'),
-    orderBy('createdAt', 'desc')
+    orderBy('createdAt', 'asc')
   );
   return onSnapshot(q, (snapshot) => {
     const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
