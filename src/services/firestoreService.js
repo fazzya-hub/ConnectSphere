@@ -63,7 +63,11 @@ export async function toggleLike(userId, postId, isLiked) {
       batch.delete(likeRef);
       batch.update(postRef, { likesCount: increment(-1) });
     } else {
-      batch.set(likeRef, { userId, postId, createdAt: serverTimestamp() });
+      batch.set(likeRef, {
+        userId,
+        postId,
+        createdAt: serverTimestamp(),
+      });
       batch.update(postRef, { likesCount: increment(1) });
     }
 
@@ -76,22 +80,23 @@ export async function toggleLike(userId, postId, isLiked) {
 }
 
 /**
- * Cek apakah user sudah like sebuah post.
+ * Cek apakah user menyukai sebuah post.
  * @param {string} userId
  * @param {string} postId
- * @returns {Promise<boolean>}
+ * @returns {Promise<{ isLiked: boolean, error: string|null }>}
  */
 export async function checkIsLiked(userId, postId) {
   try {
-    const likeSnap = await getDoc(doc(db, 'likes', `${userId}_${postId}`));
-    return likeSnap.exists();
-  } catch {
-    return false;
+    const likeId = `${userId}_${postId}`;
+    const snap = await getDoc(doc(db, 'likes', likeId));
+    return { isLiked: snap.exists(), error: null };
+  } catch (error) {
+    return { isLiked: false, error: error.message };
   }
 }
 
 /**
- * Menambahkan komentar ke sebuah post.
+ * Menambahkan komentar ke post.
  * @param {string} postId
  * @param {string} authorId
  * @param {string} text
@@ -99,12 +104,16 @@ export async function checkIsLiked(userId, postId) {
  */
 export async function addComment(postId, authorId, text) {
   try {
-    const batch = writeBatch(db);
-    const commentRef = doc(collection(db, 'posts', postId, 'comments'));
-    batch.set(commentRef, { authorId, text, createdAt: serverTimestamp() });
-    batch.update(doc(db, 'posts', postId), { commentsCount: increment(1) });
-    await batch.commit();
-    return { data: commentRef.id, error: null };
+    const commentsRef = collection(db, 'posts', postId, 'comments');
+    const newCommentRef = await addDoc(commentsRef, {
+      authorId,
+      text,
+      createdAt: serverTimestamp(),
+    });
+    await updateDoc(doc(db, 'posts', postId), {
+      commentsCount: increment(1),
+    });
+    return { data: newCommentRef.id, error: null };
   } catch (error) {
     console.error('[firestoreService] addComment error:', error.code, error.message);
     return { data: null, error: error.message };
@@ -112,33 +121,19 @@ export async function addComment(postId, authorId, text) {
 }
 
 /**
- * Subscribe real-time ke data sebuah post (likesCount, commentsCount, dll).
+ * Subscribe secara realtime ke komentar sebuah post.
  * @param {string} postId
- * @param {Function} callback - dipanggil dengan data post terbaru
- * @returns {Function} unsubscribe
+ * @param {function} callback
+ * @returns {function} unsubscribe function
  */
-export function subscribeToPost(postId, callback) {
-  return onSnapshot(doc(db, 'posts', postId), (snapshot) => {
-    if (snapshot.exists()) {
-      callback({ id: snapshot.id, ...snapshot.data() });
-    }
-  });
-}
-
-/**
- * Subscribe real-time ke komentar sebuah post.
- * @param {string} postId
- * @param {Function} callback - dipanggil dengan array komentar
- * @returns {Function} unsubscribe
- */
-export function subscribeToComments(postId, callback) {
+export function subscribeComments(postId, callback) {
   const q = query(
     collection(db, 'posts', postId, 'comments'),
-    orderBy('createdAt', 'asc')
+    orderBy('createdAt', 'desc')
   );
   return onSnapshot(q, (snapshot) => {
-    const comments = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
-    callback(comments);
+    const data = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    callback(data);
   });
 }
 
@@ -159,7 +154,7 @@ export async function getUserById(uid) {
 }
 
 /**
- * Mengambil satu post berdasarkan ID.
+ * Mengambil detail post dari Firestore.
  * @param {string} postId
  * @returns {Promise<{ data: Object|null, error: string|null }>}
  */
@@ -204,14 +199,40 @@ export async function getFollowingIds(userId) {
   try {
     const q = query(
       collection(db, 'follows'),
-      where('followerId', '==', userId),
-      where('status', '==', 'accepted')
+      where('followerId', '==', userId)
     );
     const snapshot = await getDocs(q);
     const ids = snapshot.docs.map((d) => d.data().followingId);
     return { data: ids, error: null };
   } catch (error) {
     console.error('[firestoreService] getFollowingIds error:', error.code, error.message);
+    return { data: [], error: error.message };
+  }
+}
+
+/**
+ * Mencari post berdasarkan caption.
+ * @param {string} queryText
+ * @returns {Promise<{ data: Object[], error: string|null }>}
+ */
+export async function searchPosts(queryText) {
+  if (!queryText || queryText.trim().length === 0) return { data: [], error: null };
+  try {
+    const q = query(
+      collection(db, 'posts'),
+      orderBy('createdAt', 'desc'),
+      limit(100)
+    );
+    const snapshot = await getDocs(q);
+    let posts = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
+    
+    // Client-side filtering untuk caption
+    const lowercaseQuery = queryText.toLowerCase();
+    posts = posts.filter(p => p.caption && p.caption.toLowerCase().includes(lowercaseQuery));
+    
+    return { data: posts, error: null };
+  } catch (error) {
+    console.error('[firestoreService] searchPosts error:', error.code, error.message);
     return { data: [], error: error.message };
   }
 }
