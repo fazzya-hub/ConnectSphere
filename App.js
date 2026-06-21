@@ -26,8 +26,20 @@ export default function App() {
   });
 
   useEffect(() => {
-    const unsubscribe = subscribeToAuthState((user) => {
+    const unsubscribe = subscribeToAuthState(async (user) => {
       setUser(user);
+      if (user?.uid) {
+        // Register FCM Token
+        try {
+          const { registerForPushNotificationsAsync, saveFCMToken } = require('./src/services/notificationService');
+          const token = await registerForPushNotificationsAsync();
+          if (token) {
+            await saveFCMToken(user.uid, token);
+          }
+        } catch (error) {
+          console.error("Error setting up push notifications:", error);
+        }
+      }
     });
     return unsubscribe;
   }, [setUser]);

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { FlatList, StyleSheet } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import PostCard from '../../components/feed/PostCard';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
@@ -14,16 +15,16 @@ export default function FeedScreen() {
 
   const { posts, fetchPosts, isLoading, isRefreshing } = useFeed(followingIds);
 
-  useEffect(() => {
-    if (!user?.uid) return;
-
-    getFollowingIds(user.uid).then(({ data }) => {
-      const ids = data || [];
-      // Selalu memanggil post milik sendiri
-      const withSelf = ids.includes(user.uid) ? ids : [...ids, user.uid];
-      setFollowingIds(withSelf);
-    });
-  }, [user?.uid]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!user?.uid) return;
+      getFollowingIds(user.uid).then(({ data }) => {
+        const ids = data || [];
+        const withSelf = ids.includes(user.uid) ? ids : [...ids, user.uid];
+        setFollowingIds(withSelf);
+      });
+    }, [user?.uid])
+  );
 
   if (!user) return <Loader />;
 
