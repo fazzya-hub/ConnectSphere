@@ -165,6 +165,15 @@ export async function resetPassword(email) {
  */
 export async function logout() {
   try {
+    const userId = auth.currentUser?.uid;
+    if (userId) {
+      try {
+        const { clearFCMToken } = require('./notificationService');
+        await clearFCMToken(userId);
+      } catch (e) {
+        console.error('[authService] clearFCMToken error before logout:', e.message);
+      }
+    }
     try {
       await GoogleSignin.signOut();
     } catch (_) {

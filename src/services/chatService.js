@@ -17,6 +17,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { encryptMessage } from '../utils/encryption';
+import { createNotification } from './notificationService';
 
 /**
  * Mengambil profil user berdasarkan UID.
@@ -156,6 +157,14 @@ export async function sendMessage(conversationId, payload, senderId, recipientId
     });
 
     await batch.commit();
+
+    createNotification({
+      type: 'dm',
+      recipientId,
+      actorId: senderId,
+      conversationId,
+    }).catch((e) => console.error('[chatService] dm notif error:', e));
+
     return { data: true, error: null };
   } catch (error) {
     console.error('[chatService] sendMessage error:', error.code, error.message);

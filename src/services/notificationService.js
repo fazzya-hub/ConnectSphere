@@ -17,10 +17,12 @@ import { db } from '../config/firebase';
 import { Platform } from 'react-native';
 
 /**
- * Mendaftarkan push notification dan mendapatkan Expo Push Token.
- * @returns {Promise<string|null>} token string atau null jika gagal
+ * Mendaftarkan FCM token device ke Firestore agar bisa menerima push notification.
+ * Panggil ini setelah user berhasil login.
+ * @param {string} userId
+ * @returns {Promise<{ data: string|null, error: string|null }>}
  */
-export async function registerForPushNotificationsAsync() {
+export async function registerFCMToken(userId) {
   try {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -32,12 +34,15 @@ export async function registerForPushNotificationsAsync() {
 
     if (finalStatus !== 'granted') {
       console.warn('[notificationService] Push notification permission denied');
-      return null;
+      return { data: null, error: 'Permission denied' };
     }
 
     const projectId = Constants.expoConfig?.extra?.eas?.projectId || '44d46c21-913e-4f02-a2ad-d1e51ab09d1d';
     const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-    const token = tokenData.data;
+    const fcmToken = tokenData.data;
+
+    await updateDoc(doc(db, 'users', userId), { fcmToken });
+    console.log('[notificationService] FCM token registered:', fcmToken);
 
     // Android: channel wajib dikonfigurasi
     if (Platform.OS === 'android') {
@@ -49,27 +54,25 @@ export async function registerForPushNotificationsAsync() {
       });
     }
 
-    return token;
+    return { data: fcmToken, error: null };
   } catch (error) {
-    console.warn('[notificationService] registerForPushNotificationsAsync failed (expected in dev if FCM not set):', error.message);
-    return null;
+    console.error('[notificationService] registerFCMToken error:', error.message);
+    return { data: null, error: error.message };
   }
 }
 
 /**
- * Menyimpan FCM token ke dokumen user di Firestore.
+ * Menghapus FCM token saat user logout.
  * @param {string} userId
- * @param {string} token
- * @returns {Promise<{ data: boolean|null, error: string|null }>}
+ * @returns {Promise<{ error: string|null }>}
  */
-export async function saveFCMToken(userId, token) {
+export async function clearFCMToken(userId) {
   try {
-    await updateDoc(doc(db, 'users', userId), { fcmToken: token });
-    console.log('[notificationService] FCM token saved:', token);
-    return { data: true, error: null };
+    await updateDoc(doc(db, 'users', userId), { fcmToken: null });
+    return { error: null };
   } catch (error) {
-    console.error('[notificationService] saveFCMToken error:', error.message);
-    return { data: null, error: error.message };
+    console.error('[notificationService] clearFCMToken error:', error.message);
+    return { error: error.message };
   }
 }
 

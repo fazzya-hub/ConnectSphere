@@ -14,6 +14,7 @@ import * as Notifications from 'expo-notifications';
 import RootNavigator from './src/navigation/RootNavigator';
 import useAuthStore from './src/store/authStore';
 import { subscribeToAuthState } from './src/services/authService';
+import { registerFCMToken } from './src/services/notificationService';
 import { colors } from './src/theme';
 
 // Handler saat app di-foreground
@@ -38,21 +39,20 @@ export default function App() {
   });
 
   useEffect(() => {
-    const unsubscribe = subscribeToAuthState(async (user) => {
+    let prevUserId = null;
+
+    const unsubscribe = subscribeToAuthState((user) => {
       setUser(user);
-      if (user?.uid) {
-        // Register FCM Token
-        try {
-          const { registerForPushNotificationsAsync, saveFCMToken } = require('./src/services/notificationService');
-          const token = await registerForPushNotificationsAsync();
-          if (token) {
-            await saveFCMToken(user.uid, token);
-          }
-        } catch (error) {
-          console.error("Error setting up push notifications:", error);
-        }
+
+      // Register FCM token on login
+      if (user?.uid && user.uid !== prevUserId) {
+        registerFCMToken(user.uid);
+        prevUserId = user.uid;
+      } else if (!user) {
+        prevUserId = null;
       }
     });
+
     return unsubscribe;
   }, [setUser]);
 
