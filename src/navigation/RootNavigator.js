@@ -9,6 +9,7 @@ import UserProfileScreen from '../screens/social/UserProfileScreen';
 import FollowersScreen from '../screens/social/FollowersScreen';
 import FollowingScreen from '../screens/social/FollowingScreen';
 import FollowRequestScreen from '../screens/social/FollowRequestScreen';
+import NotificationPreferenceScreen from '../screens/settings/NotificationPreferenceScreen';
 import { colors } from '../theme';
 
 const Stack = createNativeStackNavigator();
@@ -61,6 +62,11 @@ export default function RootNavigator() {
           <Stack.Screen
             name="FollowRequests"
             component={FollowRequestScreen}
+            options={modalScreenOptions}
+          />
+          <Stack.Screen
+            name="NotificationPreferences"
+            component={NotificationPreferenceScreen}
             options={modalScreenOptions}
           />
         </>

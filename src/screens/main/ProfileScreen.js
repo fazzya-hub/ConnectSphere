@@ -1,4 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import {
   View,
   Text,
@@ -19,6 +21,7 @@ import Loader from '../../components/common/Loader';
 import { useAuth } from '../../hooks/useAuth';
 import { getPostsByAuthor, getUserById } from '../../services/firestoreService';
 import { uploadProfilePhoto } from '../../services/storageService';
+import { syncFollowCounts } from '../../services/socialService';
 import { colors, typography, spacing } from '../../theme';
 import { AUTH_STRINGS } from '../../utils/constants';
 
@@ -38,8 +41,10 @@ export default function ProfileScreen() {
   const loadProfile = useCallback(async () => {
     if (!user?.uid) return;
     setIsLoading(true);
-    const { data: profileData } = await getUserById(user.uid);
-    if (profileData) setProfile(profileData);
+    
+    // Auto-sync stats to fix any -1 or out-of-sync numbers
+    await syncFollowCounts(user.uid);
+
     const { data: postsData } = await getPostsByAuthor(user.uid);
     setPosts(postsData || []);
     setIsLoading(false);
@@ -50,6 +55,17 @@ export default function ProfileScreen() {
       loadProfile();
     }, [loadProfile])
   );
+
+  // Real-time listener untuk profile stats
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        setProfile({ id: docSnap.id, ...docSnap.data() });
+      }
+    });
+    return () => unsubscribe();
+  }, [user?.uid]);
 
   function navigateToPost(post) {
     navigation.navigate('PostDetail', { postId: post.id, post });
@@ -122,36 +138,30 @@ export default function ProfileScreen() {
 
       <View style={styles.statsRow}>
         <View style={styles.statItem}>
-          <Text style={styles.statCount}>{profile?.postsCount ?? 0}</Text>
+          <Text style={styles.statCount}>{Math.max(0, profile?.postsCount ?? 0)}</Text>
           <Text style={styles.statLabel}>Post</Text>
         </View>
         <Pressable
           style={styles.statItem}
           onPress={() => navigation.navigate('Followers', { userId: user.uid })}
         >
-          <Text style={styles.statCount}>{profile?.followersCount ?? 0}</Text>
+          <Text style={styles.statCount}>{Math.max(0, profile?.followersCount ?? 0)}</Text>
           <Text style={styles.statLabel}>Followers</Text>
         </Pressable>
         <Pressable
           style={styles.statItem}
           onPress={() => navigation.navigate('Following', { userId: user.uid })}
         >
-          <Text style={styles.statCount}>{profile?.followingCount ?? 0}</Text>
+          <Text style={styles.statCount}>{Math.max(0, profile?.followingCount ?? 0)}</Text>
           <Text style={styles.statLabel}>Following</Text>
         </Pressable>
       </View>
 
       <View style={styles.actions}>
         <Button
-          title="Edit Profile"
+          title="Edit Profil"
           variant="outline"
           onPress={() => navigation.navigate('Settings')}
-          style={styles.actionButton}
-        />
-        <Button
-          title={AUTH_STRINGS.logoutButton}
-          variant="outline"
-          onPress={signOut}
           style={styles.actionButton}
         />
       </View>
