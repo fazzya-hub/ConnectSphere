@@ -14,7 +14,11 @@
       "backgroundColor": "#ffffff"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "ConnectSphere membutuhkan akses lokasi untuk fitur Live Status.",
+        "NSMicrophoneUsageDescription": "ConnectSphere membutuhkan akses mikrofon untuk audio note di chat."
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -25,11 +29,10 @@
       "permissions": [
         "android.permission.RECORD_AUDIO",
         "android.permission.MODIFY_AUDIO_SETTINGS",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_COARSE_LOCATION"
       ],
-      "package": "com.ryuvyyn.ConnectSphere",
-      "googleServicesFile": "./google-services.json"
+      "package": "com.ryuvyyn.ConnectSphere"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -40,7 +43,14 @@
       "expo-asset",
       "@react-native-google-signin/google-signin",
       "expo-font",
-      "expo-notifications"
+      "expo-notifications",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": false,
+          "locationWhenInUsePermission": "ConnectSphere membutuhkan akses lokasi untuk menampilkan lokasi kamu ke followers."
+        }
+      ]
     ],
     "extra": {
       "eas": {
