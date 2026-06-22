@@ -18,6 +18,11 @@ import {
 import { db } from '../config/firebase';
 import { encryptMessage } from '../utils/encryption';
 
+/**
+ * Mengambil profil user berdasarkan UID.
+ * @param {string} userId - UID user yang dicari
+ * @returns {Promise<Object|null>}
+ */
 export async function getUserProfile(userId) {
   try {
     const userDoc = await getDoc(doc(db, 'users', userId));
@@ -29,6 +34,12 @@ export async function getUserProfile(userId) {
   }
 }
 
+/**
+ * Membuat konversasi baru atau mengembalikan konversasi yang sudah ada.
+ * @param {string} currentUserId - UID user yang login
+ * @param {string} targetUserId - UID user tujuan chat
+ * @returns {Promise<{ data: Object|null, error: string|null }>}
+ */
 export async function createConversation(currentUserId, targetUserId) {
   try {
     if (!currentUserId || !targetUserId) {
@@ -67,9 +78,51 @@ export async function createConversation(currentUserId, targetUserId) {
   }
 }
 
+/**
+ * Mengambil dokumen konversasi berdasarkan ID.
+ * @param {string} conversationId - ID konversasi
+ * @returns {Promise<{ data: Object|null, error: string|null }>}
+ */
+export async function getConversationById(conversationId) {
+  try {
+    if (!conversationId) {
+      throw new Error('ID percakapan harus diisi');
+    }
+
+    const convSnap = await getDoc(doc(db, 'conversations', conversationId));
+    if (!convSnap.exists()) {
+      return { data: null, error: 'Percakapan tidak ditemukan' };
+    }
+
+    return { data: { id: convSnap.id, ...convSnap.data() }, error: null };
+  } catch (error) {
+    console.error('[chatService] getConversationById error:', error.code, error.message);
+    return { data: null, error: error.message };
+  }
+}
+
+/**
+ * Mengirim pesan ke konversasi.
+ * Teks pesan dienkripsi sebelum ditulis ke Firestore.
+ * @param {string} conversationId - ID konversasi
+ * @param {{ text?: string, imageUrl?: string, audioUrl?: string, type: string, replyTo?: Object }} payload
+ * @param {string} senderId - UID pengirim
+ * @param {string} recipientId - UID penerima
+ * @returns {Promise<{ data: boolean|null, error: string|null }>}
+ */
 export async function sendMessage(conversationId, payload, senderId, recipientId) {
   try {
-    const encryptedText = payload.text ? encryptMessage(payload.text) : null;
+    if (!conversationId || !senderId || !recipientId) {
+      throw new Error('Data percakapan, pengirim, atau penerima tidak lengkap');
+    }
+
+    if (!payload?.type) {
+      throw new Error('Tipe pesan harus diisi');
+    }
+
+    const encryptedText = payload.type === 'text' && payload.text
+      ? await encryptMessage(payload.text)
+      : null;
 
     const messageData = {
       senderId,
@@ -91,6 +144,7 @@ export async function sendMessage(conversationId, payload, senderId, recipientId
 
     const convRef = doc(db, 'conversations', conversationId);
     batch.update(convRef, {
+      participantIds: arrayUnion(senderId, recipientId),
       lastMessage: {
         text: encryptedText,
         senderId,
@@ -109,6 +163,12 @@ export async function sendMessage(conversationId, payload, senderId, recipientId
   }
 }
 
+/**
+ * Menandai semua pesan masuk sebagai sudah dibaca.
+ * @param {string} conversationId - ID konversasi
+ * @param {string} userId - UID user yang membaca pesan
+ * @returns {Promise<{ data: boolean|null, error: string|null }>}
+ */
 export async function markMessagesAsRead(conversationId, userId) {
   try {
     const q = query(
@@ -143,6 +203,13 @@ export async function markMessagesAsRead(conversationId, userId) {
   }
 }
 
+/**
+ * Mengupdate status typing user pada dokumen konversasi.
+ * @param {string} conversationId - ID konversasi
+ * @param {string} userId - UID user yang sedang mengetik
+ * @param {boolean} isTyping - Status mengetik
+ * @returns {Promise<void>}
+ */
 export async function updateTypingStatus(conversationId, userId, isTyping) {
   try {
     const convRef = doc(db, 'conversations', conversationId);
@@ -154,6 +221,14 @@ export async function updateTypingStatus(conversationId, userId, isTyping) {
   }
 }
 
+/**
+ * Menambahkan emoji reaction ke pesan tertentu.
+ * @param {string} conversationId - ID konversasi
+ * @param {string} messageId - ID pesan
+ * @param {string} userId - UID user yang memberi reaction
+ * @param {string} emoji - Emoji reaction
+ * @returns {Promise<{ data: boolean|null, error: string|null }>}
+ */
 export async function addReaction(conversationId, messageId, userId, emoji) {
   try {
     const msgRef = doc(db, 'conversations', conversationId, 'messages', messageId);
@@ -167,6 +242,14 @@ export async function addReaction(conversationId, messageId, userId, emoji) {
   }
 }
 
+/**
+ * Menghapus emoji reaction dari pesan tertentu.
+ * @param {string} conversationId - ID konversasi
+ * @param {string} messageId - ID pesan
+ * @param {string} userId - UID user yang menghapus reaction
+ * @param {string} emoji - Emoji reaction
+ * @returns {Promise<{ data: boolean|null, error: string|null }>}
+ */
 export async function removeReaction(conversationId, messageId, userId, emoji) {
   try {
     const msgRef = doc(db, 'conversations', conversationId, 'messages', messageId);

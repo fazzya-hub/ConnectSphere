@@ -4,6 +4,12 @@ import { db } from '../config/firebase';
 import { decryptMessage } from '../utils/encryption';
 import { getUserProfile } from '../services/chatService';
 
+/**
+ * Hook untuk subscribe real-time ke pesan dalam sebuah konversasi.
+ * Teks pesan dari Firestore selalu didekripsi sebelum masuk ke UI.
+ * @param {string} conversationId - ID dokumen konversasi
+ * @returns {{ messages: Array, isLoading: boolean }}
+ */
 export function useChat(conversationId) {
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -26,18 +32,11 @@ export function useChat(conversationId) {
       (snapshot) => {
         const msgs = snapshot.docs.map((doc) => {
           const data = doc.data();
-          let decryptedText = '';
-
-          if (data.type === 'text' && data.text) {
-            decryptedText = decryptMessage(data.text);
-          } else {
-            decryptedText = data.text;
-          }
 
           return {
             id: doc.id,
             ...data,
-            text: decryptedText,
+            text: data.text ? decryptMessage(data.text) : '',
           };
         });
         setMessages(msgs);
@@ -55,6 +54,12 @@ export function useChat(conversationId) {
   return { messages, isLoading };
 }
 
+/**
+ * Hook untuk subscribe real-time ke daftar percakapan user.
+ * Preview lastMessage didekripsi hanya di client agar Firestore tetap menyimpan ciphertext.
+ * @param {string} currentUserId - UID user saat ini
+ * @returns {{ conversations: Array, isLoading: boolean }}
+ */
 export function useConversations(currentUserId) {
   const [conversations, setConversations] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -97,7 +102,7 @@ export function useConversations(currentUserId) {
             let lastMessageDecrypted = null;
             if (data.lastMessage) {
               let decryptedText = '';
-              if (data.lastMessage.type === 'text' && data.lastMessage.text) {
+              if (data.lastMessage.text) {
                 decryptedText = decryptMessage(data.lastMessage.text);
               } else if (data.lastMessage.type === 'image') {
                 decryptedText = '[Gambar]';
