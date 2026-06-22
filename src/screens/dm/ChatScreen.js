@@ -8,10 +8,10 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  SafeAreaView,
   ActivityIndicator,
   Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -21,6 +21,7 @@ import { useTypingIndicator, useOtherTyping } from '../../hooks/useTypingIndicat
 import {
   sendMessage,
   createConversation,
+  getConversationById,
   markMessagesAsRead,
   getUserProfile
 } from '../../services/chatService';
@@ -40,7 +41,7 @@ export default function ChatScreen() {
   const [conversationId, setConversationId] = useState(initialConversationId);
   const [partner, setPartner] = useState(initialPartner);
   const [inputText, setInputText] = useState('');
-  const [isInitializing, setIsInitializing] = useState(!initialConversationId);
+  const [isInitializing, setIsInitializing] = useState(!initialConversationId || (initialConversationId && !initialPartner));
   const [isSendingMedia, setIsSendingMedia] = useState(false);
 
   const { messages, isLoading: isChatLoading } = useChat(conversationId);
@@ -48,10 +49,22 @@ export default function ChatScreen() {
   const { isOtherUserTyping } = useOtherTyping(conversationId, currentUser?.uid);
 
   const flatListRef = useRef(null);
+  const recipientId = partner?.uid || partner?.id || userId;
 
   useEffect(() => {
     async function initializeChat() {
       if (initialConversationId) {
+        if (!initialPartner && currentUser?.uid) {
+          const { data: conv } = await getConversationById(initialConversationId);
+          const targetUserId = conv?.participantIds?.find((id) => id !== currentUser.uid);
+          if (targetUserId) {
+            const profile = await getUserProfile(targetUserId);
+            if (profile) {
+              setPartner(profile);
+            }
+          }
+        }
+
         setIsInitializing(false);
         return;
       }
@@ -82,7 +95,7 @@ export default function ChatScreen() {
     }
 
     initializeChat();
-  }, [initialConversationId, userId, currentUser?.uid]);
+  }, [initialConversationId, initialPartner, userId, currentUser?.uid]);
 
   useEffect(() => {
     if (conversationId && currentUser?.uid && messages.length > 0) {
@@ -92,6 +105,11 @@ export default function ChatScreen() {
 
   const handleSendText = async () => {
     if (!inputText.trim()) return;
+    if (!conversationId || !currentUser?.uid || !recipientId) {
+      Alert.alert('Gagal Mengirim', 'Percakapan belum siap. Coba buka ulang chat ini.');
+      return;
+    }
+
     const textToSend = inputText.trim();
     setInputText('');
 
@@ -99,7 +117,7 @@ export default function ChatScreen() {
       conversationId,
       { type: 'text', text: textToSend },
       currentUser.uid,
-      partner.uid
+      recipientId
     );
 
     if (error) {
@@ -111,6 +129,11 @@ export default function ChatScreen() {
 
   const handlePickAndSendImage = async () => {
     try {
+      if (!conversationId || !currentUser?.uid || !recipientId) {
+        Alert.alert('Gagal Mengirim', 'Percakapan belum siap. Coba buka ulang chat ini.');
+        return;
+      }
+
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Izin Ditolak', 'Aplikasi memerlukan izin galeri untuk mengirim gambar.');
@@ -137,7 +160,7 @@ export default function ChatScreen() {
         conversationId,
         { type: 'image', imageUrl },
         currentUser.uid,
-        partner.uid
+        recipientId
       );
 
       if (sendError) {
