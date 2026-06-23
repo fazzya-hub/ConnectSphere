@@ -132,7 +132,16 @@ export async function sendMessage(conversationId, payload, senderId, recipientId
       text: encryptedText,
       imageUrl: payload.imageUrl ?? null,
       audioUrl: payload.audioUrl ?? null,
-      replyTo: payload.replyTo ?? null,
+      replyTo: payload.replyTo
+        ? {
+            id: payload.replyTo.id,
+            senderId: payload.replyTo.senderId,
+            type: payload.replyTo.type,
+            text: payload.replyTo.text || null,
+            imageUrl: payload.replyTo.imageUrl || null,
+            audioUrl: payload.replyTo.audioUrl || null,
+          }
+        : null,
       reactions: {},
       status: 'sent',
       createdAt: serverTimestamp(),

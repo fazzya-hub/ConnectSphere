@@ -1,8 +1,9 @@
 import React from 'react';
-import { View, Text, StyleSheet, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
 import { colors, typography, spacing } from '../../theme';
+import AudioNote from './AudioNote';
+import ReadReceipt from './ReadReceipt';
 
 const { width } = Dimensions.get('window');
 const MAX_BUBBLE_WIDTH = width * 0.75;
@@ -15,13 +16,21 @@ function formatMessageTime(timestamp) {
   return `${hours}:${minutes}`;
 }
 
+function getReplyPreview(reply) {
+  if (!reply) return '';
+  if (reply.type === 'text') return reply.text || 'Pesan';
+  if (reply.type === 'image') return 'Gambar';
+  if (reply.type === 'audio') return 'Pesan Suara';
+  return 'Pesan';
+}
+
 export default function MessageBubble({
   message,
   currentUserId,
-  replyToMessage = null,
   onLongPress = null,
+  onReply = null,
 }) {
-  const { senderId, type, text, imageUrl, audioUrl, status, createdAt, reactions } = message;
+  const { senderId, type, text, imageUrl, audioUrl, status, createdAt, reactions, replyTo } = message;
   const isMe = senderId === currentUserId;
 
   const hasReactions = reactions && Object.keys(reactions).some(
@@ -29,16 +38,11 @@ export default function MessageBubble({
   );
 
   return (
-    <View
-      style={[
-        styles.container,
-        isMe ? styles.containerRight : styles.containerLeft,
-      ]}
-    >
-      <View
-        onStartShouldSetResponder={() => true}
-        onResponderRelease={() => {}}
-
+    <View style={[styles.container, isMe ? styles.containerRight : styles.containerLeft]}>
+      <TouchableOpacity
+        activeOpacity={0.86}
+        onLongPress={() => onLongPress?.(message)}
+        onPress={() => onReply?.(message)}
       >
         <View
           style={[
@@ -47,34 +51,20 @@ export default function MessageBubble({
             type === 'image' && styles.bubbleImage,
           ]}
         >
-          {}
-          {replyToMessage && (
-            <View
-              style={[
-                styles.replyContainer,
-                isMe ? styles.replyContainerMe : styles.replyContainerOther,
-              ]}
-            >
+          {replyTo && (
+            <View style={[styles.replyContainer, isMe ? styles.replyContainerMe : styles.replyContainerOther]}>
               <Text
-                style={[
-                  styles.replySender,
-                  isMe ? styles.replySenderMe : styles.replySenderOther,
-                ]}
+                style={[styles.replySender, isMe ? styles.replySenderMe : styles.replySenderOther]}
                 numberOfLines={1}
               >
-                {replyToMessage.senderId === currentUserId ? 'Kamu' : 'Lawan Bicara'}
+                {replyTo.senderId === currentUserId ? 'Kamu' : 'Lawan Bicara'}
               </Text>
               <Text style={styles.replyText} numberOfLines={1}>
-                {replyToMessage.type === 'text'
-                  ? replyToMessage.text
-                  : replyToMessage.type === 'image'
-                  ? '📷 Gambar'
-                  : '🎵 Pesan Suara'}
+                {getReplyPreview(replyTo)}
               </Text>
             </View>
           )}
 
-          {}
           {type === 'image' && imageUrl && (
             <Image
               source={{ uri: imageUrl }}
@@ -84,65 +74,29 @@ export default function MessageBubble({
             />
           )}
 
-          {}
-          {type === 'audio' && (
-            <View style={styles.audioContainer}>
-              <Ionicons
-                name="play-circle"
-                size={32}
-                color={isMe ? colors.textInverse : colors.primary}
-              />
-              <View style={styles.audioWaveform}>
-                <View style={[styles.audioBar, { height: 12 }]} />
-                <View style={[styles.audioBar, { height: 24 }]} />
-                <View style={[styles.audioBar, { height: 16 }]} />
-                <View style={[styles.audioBar, { height: 20 }]} />
-                <View style={[styles.audioBar, { height: 10 }]} />
-                <View style={[styles.audioBar, { height: 18 }]} />
-              </View>
-              <Text
-                style={[
-                  styles.audioDuration,
-                  isMe ? styles.audioDurationMe : styles.audioDurationOther,
-                ]}
-              >
-                Audio
-              </Text>
-            </View>
-          )}
+          {type === 'audio' && audioUrl && <AudioNote audioUrl={audioUrl} />}
 
-          {}
           {type === 'text' && text && (
             <Text style={[styles.text, isMe ? styles.textMe : styles.textOther]}>
               {text}
             </Text>
           )}
 
-          {}
           <View style={styles.footer}>
             <Text style={[styles.time, isMe ? styles.timeMe : styles.timeOther]}>
               {formatMessageTime(createdAt)}
             </Text>
 
             {isMe && (
-              <Ionicons
-                name={status === 'read' ? 'checkmark-done' : 'checkmark'}
-                size={16}
-                color={status === 'read' ? '#00F0FF' : colors.textSecondary}
-                style={styles.statusIcon}
-              />
+              <View style={styles.statusIcon}>
+                <ReadReceipt status={status} />
+              </View>
             )}
           </View>
         </View>
 
-        {}
         {hasReactions && (
-          <View
-            style={[
-              styles.reactionsContainer,
-              isMe ? styles.reactionsRight : styles.reactionsLeft,
-            ]}
-          >
+          <View style={[styles.reactionsContainer, isMe ? styles.reactionsRight : styles.reactionsLeft]}>
             {Object.keys(reactions).map((emoji) => {
               const usersReacted = reactions[emoji] || [];
               if (usersReacted.length === 0) return null;
@@ -157,7 +111,7 @@ export default function MessageBubble({
             })}
           </View>
         )}
-      </View>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -182,7 +136,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.18,
-    shadowRadius: 1.0,
+    shadowRadius: 1,
     elevation: 1,
   },
   bubbleLeft: {
@@ -212,34 +166,6 @@ const styles = StyleSheet.create({
     width: MAX_BUBBLE_WIDTH - spacing.xs,
     height: 180,
     borderRadius: 12,
-  },
-  audioContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: spacing.xxs,
-    width: 150,
-  },
-  audioWaveform: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 2,
-    marginHorizontal: spacing.xs,
-    flex: 1,
-  },
-  audioBar: {
-    width: 3,
-    backgroundColor: colors.textSecondary,
-    borderRadius: 1.5,
-  },
-  audioDuration: {
-    fontSize: typography.sizes.xs,
-    fontFamily: typography.fontFamily.regular,
-  },
-  audioDurationMe: {
-    color: colors.textInverse,
-  },
-  audioDurationOther: {
-    color: colors.textSecondary,
   },
   replyContainer: {
     borderLeftWidth: 3,
