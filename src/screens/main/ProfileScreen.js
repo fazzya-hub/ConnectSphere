@@ -1,4 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../../config/firebase';
 import {
   View,
   Text,
@@ -9,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +22,9 @@ import Loader from '../../components/common/Loader';
 import { useAuth } from '../../hooks/useAuth';
 import { getPostsByAuthor, getUserById } from '../../services/firestoreService';
 import { uploadProfilePhoto } from '../../services/storageService';
-import { colors, typography, spacing } from '../../theme';
+import { syncFollowCounts } from '../../services/socialService';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 import { AUTH_STRINGS } from '../../utils/constants';
 
 const GRID_GAP = 2;
@@ -28,6 +33,8 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const GRID_ITEM_SIZE = Math.floor((SCREEN_WIDTH - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS);
 
 export default function ProfileScreen() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { user, signOut, updateProfile } = useAuth();
   const navigation = useNavigation();
   const [profile, setProfile] = useState(user);
@@ -38,8 +45,9 @@ export default function ProfileScreen() {
   const loadProfile = useCallback(async () => {
     if (!user?.uid) return;
     setIsLoading(true);
-    const { data: profileData } = await getUserById(user.uid);
-    if (profileData) setProfile(profileData);
+
+    await syncFollowCounts(user.uid);
+
     const { data: postsData } = await getPostsByAuthor(user.uid);
     setPosts(postsData || []);
     setIsLoading(false);
@@ -50,6 +58,16 @@ export default function ProfileScreen() {
       loadProfile();
     }, [loadProfile])
   );
+
+  useEffect(() => {
+    if (!user?.uid) return;
+    const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
+      if (docSnap.exists()) {
+        setProfile({ id: docSnap.id, ...docSnap.data() });
+      }
+    });
+    return () => unsubscribe();
+  }, [user?.uid]);
 
   function navigateToPost(post) {
     navigation.navigate('PostDetail', { postId: post.id, post });
@@ -85,7 +103,6 @@ export default function ProfileScreen() {
         return;
       }
 
-      // Refresh the local profile state
       setProfile(prev => ({ ...prev, photoURL: downloadURL }));
     } catch (err) {
       Alert.alert('Gagal', 'Terjadi kesalahan saat mengganti foto profil.');
@@ -97,16 +114,17 @@ export default function ProfileScreen() {
   if (!user) return <Loader />;
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.profileHeader}>
-        {/* Pressable Avatar */}
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
+      <ScrollView style={styles.container}>
+        <View style={styles.profileHeader}>
+        {}
         <Pressable style={styles.avatarWrapper} onPress={handleChangeAvatar} disabled={isUploadingAvatar}>
           <Avatar
             uri={profile?.photoURL}
             name={profile?.displayName || profile?.username}
             size={88}
           />
-          {/* Edit badge overlay */}
+          {}
           <View style={styles.avatarEditBadge}>
             {isUploadingAvatar ? (
               <ActivityIndicator size={12} color={colors.textInverse} />
@@ -118,45 +136,39 @@ export default function ProfileScreen() {
         <Text style={styles.displayName}>{profile?.displayName || profile?.username}</Text>
         <Text style={styles.username}>@{profile?.username}</Text>
         {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
-      </View>
+        </View>
 
-      <View style={styles.statsRow}>
+        <View style={styles.statsRow}>
         <View style={styles.statItem}>
-          <Text style={styles.statCount}>{profile?.postsCount ?? 0}</Text>
+          <Text style={styles.statCount}>{Math.max(0, profile?.postsCount ?? 0)}</Text>
           <Text style={styles.statLabel}>Post</Text>
         </View>
         <Pressable
           style={styles.statItem}
           onPress={() => navigation.navigate('Followers', { userId: user.uid })}
         >
-          <Text style={styles.statCount}>{profile?.followersCount ?? 0}</Text>
+          <Text style={styles.statCount}>{Math.max(0, profile?.followersCount ?? 0)}</Text>
           <Text style={styles.statLabel}>Followers</Text>
         </Pressable>
         <Pressable
           style={styles.statItem}
           onPress={() => navigation.navigate('Following', { userId: user.uid })}
         >
-          <Text style={styles.statCount}>{profile?.followingCount ?? 0}</Text>
+          <Text style={styles.statCount}>{Math.max(0, profile?.followingCount ?? 0)}</Text>
           <Text style={styles.statLabel}>Following</Text>
         </Pressable>
-      </View>
+        </View>
 
-      <View style={styles.actions}>
+        <View style={styles.actions}>
         <Button
-          title="Edit Profile"
+          title="Edit Profil"
           variant="outline"
           onPress={() => navigation.navigate('Settings')}
           style={styles.actionButton}
         />
-        <Button
-          title={AUTH_STRINGS.logoutButton}
-          variant="outline"
-          onPress={signOut}
-          style={styles.actionButton}
-        />
-      </View>
+        </View>
 
-      <View style={styles.gridSection}>
+        <View style={styles.gridSection}>
         <Text style={styles.gridTitle}>Post Saya</Text>
         {isLoading ? (
           <Loader size="small" />
@@ -186,12 +198,13 @@ export default function ProfileScreen() {
             })}
           </View>
         )}
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

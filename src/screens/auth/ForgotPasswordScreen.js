@@ -13,11 +13,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 import { AUTH_STRINGS, AUTH_ERRORS } from '../../utils/constants';
 import { isValidEmail } from '../../utils/validators';
 
 export default function ForgotPasswordScreen({ navigation }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { forgotPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -94,7 +97,7 @@ export default function ForgotPasswordScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   container: {
     flexGrow: 1,

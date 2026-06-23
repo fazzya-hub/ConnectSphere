@@ -7,9 +7,12 @@ import PostActions from './PostActions';
 import { getUserById } from '../../services/firestoreService';
 import { useAuth } from '../../hooks/useAuth';
 import { formatRelativeTime } from '../../utils/dateFormatter';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 export default function PostCard({ post }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { user } = useAuth();
   const navigation = useNavigation();
   const [author, setAuthor] = useState(null);
@@ -74,7 +77,7 @@ export default function PostCard({ post }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
   },

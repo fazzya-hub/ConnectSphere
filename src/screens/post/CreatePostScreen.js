@@ -19,9 +19,12 @@ import { useAuth } from '../../hooks/useAuth';
 import { createPost } from '../../services/firestoreService';
 import { uploadPostImage } from '../../services/storageService';
 import useFeedStore from '../../store/feedStore';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 export default function CreatePostScreen() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const navigation = useNavigation();
   const { user } = useAuth();
   const triggerRefresh = useFeedStore((state) => state.triggerRefresh);
@@ -116,7 +119,7 @@ export default function CreatePostScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   flex: {
     flex: 1,
     backgroundColor: colors.background,

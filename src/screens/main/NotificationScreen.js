@@ -1,55 +1,162 @@
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import Button from '../../components/common/Button';
-import { colors, typography, spacing } from '../../theme';
+import React from 'react';
+import {
+  View, Text, FlatList, StyleSheet, TouchableOpacity,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
+import { useNotifications, markNotificationRead, markAllNotificationsRead } from '../../hooks/useNotifications';
+import NotificationItem from '../../components/notification/NotificationItem';
+import Loader from '../../components/common/Loader';
+import EmptyState from '../../components/common/EmptyState';
+import useAuthStore from '../../store/authStore';
+import useNotificationStore from '../../store/notificationStore';
+import { useAppTheme } from '../../theme/themeContext';
+import { typography } from '../../theme/typography';
+import { spacing } from '../../theme/spacing';
 
-export default function NotificationScreen() {
-  const navigation = useNavigation();
+export default function NotificationScreen({ navigation }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
+  const { user } = useAuthStore();
+  const { notifications, isLoading } = useNotifications(user?.uid);
+  const { markAllRead } = useNotificationStore();
+
+  const now = Date.now();
+  const recentNotifs = notifications.filter(n => {
+    const t = n.createdAt?.toDate?.()?.getTime() ?? 0;
+    return now - t < 86400000;
+  });
+  const olderNotifs = notifications.filter(n => {
+    const t = n.createdAt?.toDate?.()?.getTime() ?? 0;
+    return now - t >= 86400000;
+  });
+
+  const hasUnread = notifications.some(n => !n.isRead);
+
+  async function handleNotifPress(notif) {
+    if (!notif.isRead) {
+      await markNotificationRead(notif.id);
+    }
+    switch (notif.type) {
+      case 'like':
+      case 'comment':
+        if (notif.postId) navigation.navigate('PostDetail', { postId: notif.postId });
+        break;
+      case 'follow':
+      case 'follow_request':
+      case 'follow_accept':
+        if (notif.actorIds?.[0]) navigation.navigate('UserProfile', { userId: notif.actorIds[0] });
+        break;
+      case 'dm':
+        if (notif.conversationId) {
+          navigation.navigate('Chat', { conversationId: notif.conversationId });
+        } else {
+          navigation.navigate('Inbox');
+        }
+        break;
+    }
+  }
+
+  async function handleMarkAll() {
+    markAllRead();
+    if (user?.uid) await markAllNotificationsRead(user.uid);
+  }
+
+  function renderSection(title, data) {
+    if (data.length === 0) return null;
+    return (
+      <>
+        <Text style={styles.sectionLabel}>{title}</Text>
+        {data.map(notif => (
+          <NotificationItem
+            key={notif.id}
+            notif={notif}
+            onPress={handleNotifPress}
+          />
+        ))}
+      </>
+    );
+  }
 
   return (
-    <ScrollView style={styles.container}>
-      <Text style={styles.title}>Notifikasi</Text>
-      <Text style={styles.subtitle}>Likes, comments, dan followers baru</Text>
-      
-      {/* TEMPORARY: Tap untuk lihat post atau profile */}
-      <View style={styles.navSection}>
-        <Text style={styles.navLabel}>Sementara - Testing Navigation</Text>
-        <Button title="Notif dari Post" onPress={() => navigation.navigate('PostDetail', { postId: '3' })} />
-        <Button title="Notif dari User" onPress={() => navigation.navigate('UserProfile', { userId: '789' })} />
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
+      {}
+      <View style={styles.topBar}>
+        <Text style={styles.title}>Notifikasi</Text>
+        {hasUnread && (
+          <TouchableOpacity onPress={handleMarkAll} style={styles.markAllBtn}>
+            <Ionicons name="checkmark-done" size={18} color={colors.primary} />
+            <Text style={styles.markAllText}>Tandai semua</Text>
+          </TouchableOpacity>
+        )}
       </View>
-    </ScrollView>
+
+      {isLoading ? (
+        <Loader />
+      ) : notifications.length === 0 ? (
+        <EmptyState
+          icon="notifications-outline"
+          message="Belum ada notifikasi"
+          subtitle="Aktivitas dari pengikutmu akan muncul di sini"
+        />
+      ) : (
+        <FlatList
+          data={[]}
+          ListHeaderComponent={
+            <>
+              {renderSection('Terbaru', recentNotifs)}
+              {renderSection('Sebelumnya', olderNotifs)}
+            </>
+          }
+          renderItem={null}
+          keyExtractor={() => null}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.listContent}
+        />
+      )}
+    </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
+const getStyles = (colors) => StyleSheet.create({
+  safe: {
     flex: 1,
     backgroundColor: colors.background,
-    padding: spacing.lg,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: spacing.md,
+    paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: colors.border,
   },
   title: {
-    color: colors.textPrimary,
-    fontSize: typography.sizes.xxl,
+    fontSize: typography.sizes.xl,
     fontWeight: typography.weights.bold,
-    textAlign: 'center',
-  },
-  subtitle: {
-    color: colors.textSecondary,
-    fontSize: typography.sizes.md,
-    marginTop: spacing.xs,
-    textAlign: 'center',
-  },
-  navSection: {
-    marginTop: spacing.xl,
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-  },
-  navLabel: {
     color: colors.primary,
+  },
+  markAllBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  markAllText: {
     fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.bold,
-    marginBottom: spacing.md,
-    textAlign: 'center',
+    color: colors.primary,
+  },
+  sectionLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: colors.textSecondary,
+    paddingHorizontal: spacing.md,
+    paddingTop: spacing.md,
+    paddingBottom: 4,
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+  },
+  listContent: {
+    paddingBottom: spacing.xl,
   },
 });

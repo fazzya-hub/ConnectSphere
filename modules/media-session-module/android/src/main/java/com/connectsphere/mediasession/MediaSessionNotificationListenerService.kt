@@ -1,0 +1,5 @@
+package com.connectsphere.mediasession
+
+import android.service.notification.NotificationListenerService
+
+class MediaSessionNotificationListenerService : NotificationListenerService()

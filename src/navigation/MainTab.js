@@ -1,3 +1,4 @@
+import { View } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import FeedScreen from '../screens/main/FeedScreen';
@@ -5,11 +6,18 @@ import ExploreScreen from '../screens/main/ExploreScreen';
 import CreatePostScreen from '../screens/post/CreatePostScreen';
 import NotificationScreen from '../screens/main/NotificationScreen';
 import ProfileScreen from '../screens/main/ProfileScreen';
-import { colors } from '../theme';
+import NotificationBadge from '../components/notification/NotificationBadge';
+import { useUnreadNotifCount } from '../hooks/useNotifications';
+import useAuthStore from '../store/authStore';
+import { useAppTheme } from '../theme/themeContext';
 
 const Tab = createBottomTabNavigator();
 
 export default function MainTab() {
+  const { user } = useAuthStore();
+  const { colors } = useAppTheme();
+  useUnreadNotifCount(user?.uid); // subscribe realtime, update Zustand store
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -22,7 +30,6 @@ export default function MainTab() {
         tabBarInactiveTintColor: colors.textSecondary,
         tabBarIcon: ({ focused, color, size }) => {
           let iconName;
-
           if (route.name === 'Home') {
             iconName = focused ? 'home' : 'home-outline';
           } else if (route.name === 'Explore') {
@@ -31,39 +38,24 @@ export default function MainTab() {
             iconName = focused ? 'add-circle' : 'add-circle-outline';
           } else if (route.name === 'Notifications') {
             iconName = focused ? 'notifications' : 'notifications-outline';
+            return (
+              <View>
+                <Ionicons name={iconName} size={size} color={color} />
+                <NotificationBadge />
+              </View>
+            );
           } else if (route.name === 'Profile') {
             iconName = focused ? 'person' : 'person-outline';
           }
-
           return <Ionicons name={iconName} size={size} color={color} />;
         },
       })}
     >
-      <Tab.Screen
-        name="Home"
-        component={FeedScreen}
-        options={{ title: 'Feed' }}
-      />
-      <Tab.Screen
-        name="Explore"
-        component={ExploreScreen}
-        options={{ title: 'Jelajahi' }}
-      />
-      <Tab.Screen
-        name="CreatePost"
-        component={CreatePostScreen}
-        options={{ title: 'Buat Post', tabBarLabel: 'Buat' }}
-      />
-      <Tab.Screen
-        name="Notifications"
-        component={NotificationScreen}
-        options={{ title: 'Notifikasi' }}
-      />
-      <Tab.Screen
-        name="Profile"
-        component={ProfileScreen}
-        options={{ title: 'Profil' }}
-      />
+      <Tab.Screen name="Home" component={FeedScreen} options={{ title: 'Feed' }} />
+      <Tab.Screen name="Explore" component={ExploreScreen} options={{ title: 'Jelajahi' }} />
+      <Tab.Screen name="CreatePost" component={CreatePostScreen} options={{ title: 'Buat Post', tabBarLabel: 'Buat' }} />
+      <Tab.Screen name="Notifications" component={NotificationScreen} options={{ title: 'Notifikasi' }} />
+      <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profil' }} />
     </Tab.Navigator>
   );
 }

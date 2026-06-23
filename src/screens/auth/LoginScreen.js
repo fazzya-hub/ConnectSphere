@@ -14,7 +14,8 @@ import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-si
 import { useAuth } from '../../hooks/useAuth';
 import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 import { AUTH_STRINGS, AUTH_ERRORS } from '../../utils/constants';
 import { isValidEmail } from '../../utils/validators';
 
@@ -23,6 +24,8 @@ GoogleSignin.configure({
 });
 
 export default function LoginScreen({ navigation }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { login, googleSignIn } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -163,7 +166,7 @@ export default function LoginScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   container: {
     flexGrow: 1,

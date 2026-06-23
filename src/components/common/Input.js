@@ -1,6 +1,7 @@
 import { View, Text, TextInput, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 export default function Input({
   label,
@@ -14,6 +15,8 @@ export default function Input({
   icon,
   rightElement,
 }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   return (
     <View style={styles.wrapper}>
       {label ? <Text style={styles.label}>{label}</Text> : null}
@@ -44,7 +47,7 @@ export default function Input({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   wrapper: {
     marginBottom: spacing.md,
   },
