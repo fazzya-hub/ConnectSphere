@@ -7,12 +7,6 @@ import { db } from '../config/firebase';
 import useNotificationStore from '../store/notificationStore';
 import { getUserById } from '../services/firestoreService';
 
-/**
- * Subscribe ke jumlah notifikasi belum dibaca secara real-time via onSnapshot.
- * Update badge di tab bar otomatis melalui Zustand store.
- * @param {string} userId
- * @returns {{ unreadCount: number }}
- */
 export function useUnreadNotifCount(userId) {
   const setUnreadCount = useNotificationStore((s) => s.setUnreadCount);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
@@ -38,13 +32,6 @@ export function useUnreadNotifCount(userId) {
   return { unreadCount };
 }
 
-/**
- * Subscribe ke semua notifikasi user secara real-time,
- * dengan enrichment nama & foto dari actor.
- * @param {string} userId
- * @param {number} limitCount - Jumlah notif yang diambil (default 30)
- * @returns {{ notifications: Object[], isLoading: boolean }}
- */
 export function useNotifications(userId, limitCount = 30) {
   const [notifications, setNotifications] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -66,7 +53,6 @@ export function useNotifications(userId, limitCount = 30) {
     const unsubscribe = onSnapshot(q, async (snapshot) => {
       const rawNotifs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
 
-      // Enrich dengan nama actor
       const enriched = await Promise.all(
         rawNotifs.map(async (notif) => {
           const firstActorId = notif.actorIds?.[0] || notif.actorId;
@@ -101,11 +87,6 @@ export function useNotifications(userId, limitCount = 30) {
   return { notifications, isLoading };
 }
 
-/**
- * Menandai notifikasi sebagai sudah dibaca.
- * @param {string} notifId
- * @returns {Promise<{ data: boolean|null, error: string|null }>}
- */
 export async function markNotificationRead(notifId) {
   try {
     await updateDoc(doc(db, 'notifications', notifId), { isRead: true });
@@ -116,11 +97,6 @@ export async function markNotificationRead(notifId) {
   }
 }
 
-/**
- * Menandai semua notifikasi user sebagai sudah dibaca.
- * @param {string} userId
- * @returns {Promise<{ data: boolean|null, error: string|null }>}
- */
 export async function markAllNotificationsRead(userId) {
   try {
     const { getDocs } = await import('firebase/firestore');

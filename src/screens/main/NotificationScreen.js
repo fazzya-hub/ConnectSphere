@@ -14,12 +14,6 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 
-/**
- * NotificationScreen — pusat notifikasi real-time ConnectSphere.
- * - Notif dikelompokkan jadi "Terbaru" (< 24 jam) dan "Sebelumnya"
- * - Badge unread otomatis via Zustand store
- * - Deep link ke PostDetail / UserProfile saat tap notif
- */
 export default function NotificationScreen({ navigation }) {
   const { user } = useAuthStore();
   const { notifications, isLoading } = useNotifications(user?.uid);
@@ -48,17 +42,21 @@ export default function NotificationScreen({ navigation }) {
         break;
       case 'follow':
       case 'follow_request':
-      case 'follow_request_accepted':
+      case 'follow_accept':
         if (notif.actorIds?.[0]) navigation.navigate('UserProfile', { userId: notif.actorIds[0] });
         break;
       case 'dm':
-        navigation.navigate('Inbox');
+        if (notif.conversationId) {
+          navigation.navigate('Chat', { conversationId: notif.conversationId });
+        } else {
+          navigation.navigate('Inbox');
+        }
         break;
     }
   }
 
   async function handleMarkAll() {
-    markAllRead(); // update store UI immediately
+    markAllRead();
     if (user?.uid) await markAllNotificationsRead(user.uid);
   }
 
@@ -79,8 +77,8 @@ export default function NotificationScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Top bar */}
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      {}
       <View style={styles.topBar}>
         <Text style={styles.title}>Notifikasi</Text>
         {hasUnread && (

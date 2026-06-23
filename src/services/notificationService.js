@@ -16,13 +16,7 @@ import {
 import { db } from '../config/firebase';
 import { Platform } from 'react-native';
 
-/**
- * Mendaftarkan FCM token device ke Firestore agar bisa menerima push notification.
- * Panggil ini setelah user berhasil login.
- * @param {string} userId
- * @returns {Promise<{ data: string|null, error: string|null }>}
- */
-export async function registerFCMToken(userId) {
+export async function registerForPushNotificationsAsync() {
   try {
     const { status: existingStatus } = await Notifications.getPermissionsAsync();
     let finalStatus = existingStatus;
@@ -34,17 +28,13 @@ export async function registerFCMToken(userId) {
 
     if (finalStatus !== 'granted') {
       console.warn('[notificationService] Push notification permission denied');
-      return { data: null, error: 'Permission denied' };
+      return null;
     }
 
     const projectId = Constants.expoConfig?.extra?.eas?.projectId || '44d46c21-913e-4f02-a2ad-d1e51ab09d1d';
     const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-    const fcmToken = tokenData.data;
+    const token = tokenData.data;
 
-    await updateDoc(doc(db, 'users', userId), { fcmToken });
-    console.log('[notificationService] FCM token registered:', fcmToken);
-
-    // Android: channel wajib dikonfigurasi
     if (Platform.OS === 'android') {
       await Notifications.setNotificationChannelAsync('default', {
         name: 'Default',
@@ -54,39 +44,24 @@ export async function registerFCMToken(userId) {
       });
     }
 
-    return { data: fcmToken, error: null };
+    return token;
   } catch (error) {
-    console.error('[notificationService] registerFCMToken error:', error.message);
+    console.warn('[notificationService] registerForPushNotificationsAsync failed (expected in dev if FCM not set):', error.message);
+    return null;
+  }
+}
+
+export async function saveFCMToken(userId, token) {
+  try {
+    await updateDoc(doc(db, 'users', userId), { fcmToken: token });
+    console.log('[notificationService] FCM token saved:', token);
+    return { data: true, error: null };
+  } catch (error) {
+    console.error('[notificationService] saveFCMToken error:', error.message);
     return { data: null, error: error.message };
   }
 }
 
-/**
- * Menghapus FCM token saat user logout.
- * @param {string} userId
- * @returns {Promise<{ error: string|null }>}
- */
-export async function clearFCMToken(userId) {
-  try {
-    await updateDoc(doc(db, 'users', userId), { fcmToken: null });
-    return { error: null };
-  } catch (error) {
-    console.error('[notificationService] clearFCMToken error:', error.message);
-    return { error: error.message };
-  }
-}
-
-/**
- * Membuat notifikasi in-app di Firestore.
- * Jika notifikasi serupa sudah ada (belum dibaca), group actors.
- * @param {Object} params
- * @param {string} params.type - 'like' | 'comment' | 'follow' | 'dm' | 'follow_request' | 'follow_accept'
- * @param {string} params.recipientId - UID penerima notifikasi
- * @param {string} params.actorId - UID yang melakukan aksi
- * @param {string|null} [params.postId] - ID post terkait
- * @param {string|null} [params.conversationId] - ID conversation terkait
- * @returns {Promise<{ data: string|null, error: string|null }>}
- */
 export async function createNotification({
   type,
   recipientId,
@@ -95,12 +70,11 @@ export async function createNotification({
   conversationId = null,
 }) {
   try {
-    // Jangan kirim notifikasi ke diri sendiri
+
     if (recipientId === actorId) {
       return { data: null, error: null };
     }
 
-    // Cek preferensi notifikasi penerima
     const prefKey =
       type === 'follow' || type === 'follow_request' || type === 'follow_accept'
         ? 'newFollower'
@@ -112,7 +86,6 @@ export async function createNotification({
         ? 'dm'
         : null;
 
-    // Cek apakah notif serupa sudah ada (grouping)
     const constraints = [
       where('type', '==', type),
       where('recipientId', '==', recipientId),
@@ -129,7 +102,7 @@ export async function createNotification({
     let notifId = null;
 
     if (!existing.empty) {
-      // Update notif yang ada — tambah actor (grouping)
+
       const existingDoc = existing.docs[0];
       const existingData = existingDoc.data();
       const notifRef = existingDoc.ref;
@@ -148,7 +121,7 @@ export async function createNotification({
 
       await updateDoc(notifRef, updateData);
     } else {
-      // Buat notif baru
+
       const notifRef = await addDoc(collection(db, 'notifications'), {
         type,
         recipientId,
@@ -163,14 +136,12 @@ export async function createNotification({
       notifId = notifRef.id;
     }
 
-    // --- Send Push Notification via Expo HTTP API ---
     const userSnap = await getDoc(doc(db, 'users', recipientId));
     if (userSnap.exists()) {
       const userData = userSnap.data();
       const token = userData.fcmToken;
       const prefs = userData.notificationPrefs || {};
 
-      // Jika token ada dan user belum mematikan notifikasi tipe ini
       if (token && (!prefKey || prefs[prefKey] !== false)) {
         const actorSnap = await getDoc(doc(db, 'users', actorId));
         const actorName = actorSnap.exists() ? actorSnap.data().displayName : 'Seseorang';
@@ -225,12 +196,6 @@ export async function createNotification({
   }
 }
 
-/**
- * Mengupdate preferensi notifikasi user.
- * @param {string} userId
- * @param {Object} prefs - { likes?: boolean, comments?: boolean, newFollower?: boolean, dm?: boolean }
- * @returns {Promise<{ data: boolean|null, error: string|null }>}
- */
 export async function updateNotificationPreferences(userId, prefs) {
   try {
     const updates = {};
