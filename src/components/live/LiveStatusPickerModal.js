@@ -103,17 +103,15 @@ export default function LiveStatusPickerModal({ visible, onClose, currentLiveSta
               </Text>
 
               {/* Option: Close Friends Only Toggle */}
-              <View style={[styles.option, { borderBottomColor: colors.border, justifyContent: 'space-between' }]}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <View style={[styles.optionIcon, { backgroundColor: 'rgba(35, 197, 94, 0.15)' }]}>
-                    <Ionicons name="star" size={22} color={colors.success} />
-                  </View>
-                  <View style={styles.optionInfo}>
-                    <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>Close Friends Saja</Text>
-                    <Text style={[styles.optionDesc, { color: colors.textSecondary }]}>
-                      Hanya teman terdekat yang bisa melihat
-                    </Text>
-                  </View>
+              <View style={[styles.option, { borderBottomColor: colors.border }]}>
+                <View style={[styles.optionIcon, { backgroundColor: 'rgba(35, 197, 94, 0.15)' }]}>
+                  <Ionicons name="star" size={22} color={colors.success} />
+                </View>
+                <View style={styles.optionInfo}>
+                  <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>Close Friends Saja</Text>
+                  <Text style={[styles.optionDesc, { color: colors.textSecondary }]}>
+                    Hanya teman terdekat yang bisa melihat
+                  </Text>
                 </View>
                 <Switch
                   value={isCloseFriendOnly}
