@@ -67,16 +67,9 @@ export default function SettingsScreen() {
   if (isLoading) return <Loader />;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <ScrollView style={styles.container}>
-        <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Pengaturan</Text>
-        <View style={styles.placeholder} />
-        </View>
-
+        
         <View style={styles.content}>
         <Text style={styles.sectionTitle}>Akun</Text>
 

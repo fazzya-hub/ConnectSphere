@@ -34,7 +34,7 @@ export default function MainDrawer() {
       <Drawer.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ title: 'Pengaturan Notifikasi' }}
+        options={{ title: 'Pengaturan' }}
       />
     </Drawer.Navigator>
   );

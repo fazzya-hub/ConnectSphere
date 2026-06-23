@@ -33,7 +33,7 @@ export default function FeedScreen() {
   if (!user) return <Loader />;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <FlatList
         style={styles.container}
         data={posts}

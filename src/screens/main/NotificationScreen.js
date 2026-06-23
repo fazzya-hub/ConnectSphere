@@ -77,7 +77,7 @@ export default function NotificationScreen({ navigation }) {
   }
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       {}
       <View style={styles.topBar}>
         <Text style={styles.title}>Notifikasi</Text>

@@ -112,7 +112,7 @@ export default function InboxScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       {conversations.length === 0 ? (
         <View style={styles.emptyContainer}>
           <EmptyState message="Belum ada percakapan. Kirim pesan ke teman pertamamu lewat Explore!" />

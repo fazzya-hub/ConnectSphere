@@ -112,7 +112,7 @@ export default function ProfileScreen() {
   if (!user) return <Loader />;
 
   return (
-    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.container} edges={['left', 'right']}>
       <ScrollView style={styles.container}>
         <View style={styles.profileHeader}>
         {}

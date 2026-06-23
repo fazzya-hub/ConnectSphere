@@ -75,7 +75,7 @@ export default function ExploreScreen() {
   const isSearchMode = query.trim().length >= 2;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+    <SafeAreaView style={styles.safe} edges={['left', 'right']}>
       {}
       <View style={styles.searchBar}>
         <Ionicons name="search" size={18} color={colors.textSecondary} style={styles.searchIcon} />
