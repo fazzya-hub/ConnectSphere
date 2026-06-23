@@ -3,7 +3,7 @@
 ## Anggota Kelompok
  No | Nama | NIM |
 | :--- | :--- | :--- |
-| 1 | [Nama Anggota 1] | 2410501 |
+| 1 | [Faraz Thifal] | 2410501022 |
 | 2 | Muhammad Kevin | 2410501040 |
 | 3 | [Nama Anggota 3] | [NIM Anggota 3] |
 | 4 | [Nama Anggota 4] | [NIM Anggota 4] |
