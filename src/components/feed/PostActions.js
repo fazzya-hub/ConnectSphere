@@ -18,7 +18,7 @@ export default function PostActions({ post }) {
 
   useEffect(() => {
     if (!user?.uid) return;
-    checkIsLiked(user.uid, post.id).then(setIsLiked);
+    checkIsLiked(user.uid, post.id).then((res) => setIsLiked(res.isLiked));
   }, [user?.uid, post.id]);
 
   useEffect(() => {
