@@ -11,6 +11,8 @@ import Animated, {
   useSharedValue,
   withSpring,
   runOnJS,
+  FadeInLeft,
+  FadeInRight,
 } from 'react-native-reanimated';
 
 
@@ -39,6 +41,7 @@ export default function MessageBubble({
   partnerUsername = '',
   onLongPress = null,
   onReply = null,
+  shouldAnimate = true,
 }) {
   const { colors, mode } = useAppTheme();
   const styles = useMemo(() => getStyles(colors, mode), [colors, mode]);
@@ -78,12 +81,16 @@ export default function MessageBubble({
 
   return (
     <GestureDetector gesture={panGesture}>
-      <Animated.View style={[styles.container, isMe ? styles.containerRight : styles.containerLeft, animatedStyle]}>
-        <TouchableOpacity
-          activeOpacity={0.86}
-          onLongPress={() => onLongPress?.(message)}
-          onPress={() => onReply?.(message)}
-        >
+      <Animated.View
+        entering={shouldAnimate ? (isMe ? FadeInRight.duration(200) : FadeInLeft.duration(200)) : undefined}
+        style={[styles.container, isMe ? styles.containerRight : styles.containerLeft]}
+      >
+        <Animated.View style={animatedStyle}>
+          <TouchableOpacity
+            activeOpacity={0.86}
+            onLongPress={() => onLongPress?.(message)}
+            onPress={() => onReply?.(message)}
+          >
         <View
           style={[
             styles.bubble,
@@ -152,6 +159,7 @@ export default function MessageBubble({
           </View>
         )}
       </TouchableOpacity>
+        </Animated.View>
       </Animated.View>
     </GestureDetector>
   );

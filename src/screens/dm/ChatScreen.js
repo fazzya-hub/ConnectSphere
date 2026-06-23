@@ -53,8 +53,18 @@ export default function ChatScreen() {
   const [isSendingMedia, setIsSendingMedia] = useState(false);
   const [replyTo, setReplyTo] = useState(null);
   const [selectedMessage, setSelectedMessage] = useState(null);
+  const [initialMessageIds, setInitialMessageIds] = useState(new Set());
+  const [hasLoadedInitial, setHasLoadedInitial] = useState(false);
 
   const { messages, isLoading: isChatLoading } = useChat(conversationId);
+
+  useEffect(() => {
+    if (!isChatLoading && !hasLoadedInitial) {
+      const ids = new Set(messages.map((m) => m.id));
+      setInitialMessageIds(ids);
+      setHasLoadedInitial(true);
+    }
+  }, [messages, isChatLoading, hasLoadedInitial]);
   const { handleTyping } = useTypingIndicator(conversationId, currentUser?.uid);
   const { isOtherUserTyping } = useOtherTyping(conversationId, currentUser?.uid);
 
@@ -277,6 +287,7 @@ export default function ChatScreen() {
                   partnerUsername={partner?.username}
                   onLongPress={setSelectedMessage}
                   onReply={setReplyTo}
+                  shouldAnimate={hasLoadedInitial && !initialMessageIds.has(item.id)}
                 />
               )}
               contentContainerStyle={styles.messageListContainer}
