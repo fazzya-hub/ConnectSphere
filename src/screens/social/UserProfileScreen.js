@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, Pressable,
   Dimensions, Alert, TouchableOpacity, ActionSheetIOS, Platform,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { doc, getDoc, onSnapshot } from 'firebase/firestore';
@@ -13,8 +14,19 @@ import Loader from '../../components/common/Loader';
 import FollowButton from '../../components/social/FollowButton';
 import SocialGraphStats from '../../components/social/SocialGraphStats';
 import { getUserById, getPostsByAuthor } from '../../services/firestoreService';
-import { blockUser, unblockUser, muteUser, unmuteUser, syncFollowCounts, checkBlockStatus, checkHasBlocked } from '../../services/socialService';
+import {
+  addToCloseFriends,
+  blockUser,
+  checkBlockStatus,
+  checkHasBlocked,
+  removeFromCloseFriends,
+  muteUser,
+  syncFollowCounts,
+  unblockUser,
+  unmuteUser
+} from '../../services/socialService';
 import { useMutualFollowers } from '../../hooks/useSocialGraph';
+import { formatLiveStatus } from '../../utils/liveStatusFormatter';
 import useAuthStore from '../../store/authStore';
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
@@ -26,10 +38,6 @@ const NUM_COLUMNS = 3;
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const GRID_ITEM_SIZE = Math.floor((SCREEN_WIDTH - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS);
 
-/**
- * UserProfileScreen — Tampilan profil orang lain.
- * Fitur: Follow/Unfollow, Mutual Followers, Post Grid, Block, Mute.
- */
 export default function UserProfileScreen() {
   const { user: currentUser } = useAuthStore();
   const navigation = useNavigation();
@@ -41,6 +49,7 @@ export default function UserProfileScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [isBlocked, setIsBlocked] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isCloseFriend, setIsCloseFriend] = useState(false);
 
   const { mutualCount, mutualPreview } = useMutualFollowers(currentUser?.uid, userId);
   const isSelf = currentUser?.uid === userId;
@@ -49,7 +58,7 @@ export default function UserProfileScreen() {
     if (!userId || !currentUser?.uid) return;
     setIsLoading(true);
     try {
-      // Cek apakah target memblokir kita
+
       const isBlockedByTarget = await checkBlockStatus(currentUser.uid, userId);
       if (isBlockedByTarget) {
         setProfile({ isBlocked: true, username: 'Pengguna', displayName: 'Pengguna', photoURL: null, bio: '' });
@@ -60,13 +69,11 @@ export default function UserProfileScreen() {
         return;
       }
 
-      // Auto-sync counts jika tidak diblokir
       await syncFollowCounts(userId);
 
       const { data: postsData } = await getPostsByAuthor(userId);
       setPosts(postsData || []);
 
-      // Cek status apakah kita memblokir target / membisukan target
       if (!isSelf) {
         const [blockedByMe, muteSnap] = await Promise.all([
           checkHasBlocked(currentUser.uid, userId),
@@ -86,29 +93,39 @@ export default function UserProfileScreen() {
     loadData();
   }, [loadData]);
 
-  // Real-time listener untuk profile data
   useEffect(() => {
     if (!userId || !currentUser?.uid) return;
-    
+
     let unsubProfile = () => {};
-    
+
     async function initListener() {
       const isBlockedByTarget = await checkBlockStatus(currentUser.uid, userId);
       if (isBlockedByTarget) {
         setProfile({ isBlocked: true, username: 'Pengguna', displayName: 'Pengguna', photoURL: null, bio: '' });
         return;
       }
-      
+
       unsubProfile = onSnapshot(doc(db, 'users', userId), (docSnap) => {
         if (docSnap.exists()) {
           setProfile({ id: docSnap.id, ...docSnap.data() });
         }
       });
     }
-    
+
     initListener();
     return () => unsubProfile();
   }, [userId, currentUser?.uid]);
+
+  useEffect(() => {
+    if (!currentUser?.uid || isSelf) return;
+
+    const unsubscribe = onSnapshot(doc(db, 'users', currentUser.uid), (docSnap) => {
+      const closeFriends = docSnap.data()?.closeFriends || [];
+      setIsCloseFriend(closeFriends.includes(userId));
+    });
+
+    return () => unsubscribe();
+  }, [currentUser?.uid, userId, isSelf]);
 
   async function handleBlock() {
     Alert.alert(
@@ -147,6 +164,19 @@ export default function UserProfileScreen() {
     }
   }
 
+  async function handleCloseFriendToggle() {
+    try {
+      if (isCloseFriend) {
+        await removeFromCloseFriends(currentUser.uid, userId);
+      } else {
+        await addToCloseFriends(currentUser.uid, userId);
+      }
+      setIsCloseFriend(!isCloseFriend);
+    } catch (error) {
+      Alert.alert('Error', 'Gagal memperbarui Close Friends.');
+    }
+  }
+
   function showMoreOptions() {
     const options = [
       isMuted ? 'Unmute Pengguna' : 'Mute Pengguna',
@@ -180,9 +210,12 @@ export default function UserProfileScreen() {
     );
   }
 
+  const liveText = profile.liveStatusEnabled ? formatLiveStatus(profile.liveStatus) : null;
+
   return (
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header dengan tombol back & opsi */}
+      {}
       <View style={styles.navBar}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.textPrimary} />
@@ -196,7 +229,7 @@ export default function UserProfileScreen() {
         {isSelf && <View style={styles.navBtn} />}
       </View>
 
-      {/* Status Block/Mute */}
+      {}
       {isBlocked && (
         <View style={styles.statusBanner}>
           <Ionicons name="ban" size={16} color={colors.error} />
@@ -216,12 +249,16 @@ export default function UserProfileScreen() {
         </View>
       )}
 
-      {/* Avatar & Nama */}
+      {}
       <View style={styles.profileHeader}>
         <Avatar uri={profile.photoURL} name={profile.displayName || profile.username} size={88} />
         <Text style={styles.displayName}>{profile.displayName || profile.username}</Text>
         <Text style={styles.username}>@{profile.username}</Text>
         {profile.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
+        {}
+        {liveText && (
+          <Text style={styles.liveStatus}>{liveText}</Text>
+        )}
       </View>
 
       {profile.isBlocked ? (
@@ -230,12 +267,12 @@ export default function UserProfileScreen() {
         </View>
       ) : (
         <>
-          {/* Mutual followers */}
+          {}
           {!isSelf && mutualCount > 0 && (
             <SocialGraphStats mutualCount={mutualCount} mutualPreview={mutualPreview} />
           )}
 
-          {/* Stats */}
+          {}
           <View style={styles.statsRow}>
             <View style={styles.statItem}>
               <Text style={styles.statCount}>{Math.max(0, profile.postsCount ?? 0)}</Text>
@@ -257,7 +294,7 @@ export default function UserProfileScreen() {
             </Pressable>
           </View>
 
-          {/* Aksi */}
+          {}
           {!isSelf && !isBlocked && (
             <View style={styles.actions}>
               <FollowButton
@@ -271,10 +308,23 @@ export default function UserProfileScreen() {
               >
                 <Text style={styles.msgBtnText}>Pesan</Text>
               </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.closeFriendBtn, isCloseFriend && styles.closeFriendActive]}
+                onPress={handleCloseFriendToggle}
+              >
+                <Ionicons
+                  name={isCloseFriend ? 'star' : 'star-outline'}
+                  size={16}
+                  color={isCloseFriend ? colors.textInverse : colors.primary}
+                />
+                <Text style={[styles.closeFriendText, isCloseFriend && styles.closeFriendTextActive]}>
+                  Close
+                </Text>
+              </TouchableOpacity>
             </View>
           )}
 
-          {/* Post Grid */}
+          {}
           <View style={styles.gridSection}>
             <Text style={styles.gridTitle}>Postingan</Text>
             {posts.length === 0 ? (
@@ -307,6 +357,7 @@ export default function UserProfileScreen() {
         </>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
@@ -357,6 +408,13 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  liveStatus: {
+    fontSize: typography.sizes.sm,
+    color: colors.textSecondary,
+    marginTop: 4,
+    fontStyle: 'italic',
+    textAlign: 'center',
+  },
 
   statsRow: {
     flexDirection: 'row',
@@ -392,6 +450,28 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   msgBtnText: { color: colors.textPrimary, fontSize: typography.sizes.sm, fontWeight: typography.weights.semibold },
+  closeFriendBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: colors.surfaceLight,
+    borderRadius: 8,
+    justifyContent: 'center',
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: colors.primary,
+  },
+  closeFriendActive: {
+    backgroundColor: colors.primary,
+  },
+  closeFriendText: {
+    color: colors.primary,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+  },
+  closeFriendTextActive: {
+    color: colors.textInverse,
+  },
 
   gridSection: { paddingBottom: spacing.xl },
   gridTitle: {

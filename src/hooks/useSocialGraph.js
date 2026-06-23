@@ -6,13 +6,6 @@ import {
 import { db } from '../config/firebase';
 import { getAllBlockedUserIds } from '../services/socialService';
 
-/**
- * Subscribe realtime ke daftar follower atau following user.
- * Pencarian dilakukan client-side untuk menghemat Firestore reads.
- * @param {string} userId
- * @param {'followers' | 'following'} type
- * @returns {{ list: Object[], isLoading: boolean, searchQuery: string, setSearchQuery: Function }}
- */
 export function useFollowList(userId, type) {
   const [list, setList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -21,8 +14,6 @@ export function useFollowList(userId, type) {
   useEffect(() => {
     if (!userId) { setIsLoading(false); return; }
 
-    // followers → cari dokumen follows di mana followingId == userId (orang yg follow kita)
-    // following → cari dokumen follows di mana followerId == userId (orang yg kita follow)
     const filterField = type === 'followers' ? 'followingId' : 'followerId';
     const targetField = type === 'followers' ? 'followerId' : 'followingId';
 
@@ -36,7 +27,7 @@ export function useFollowList(userId, type) {
         return;
       }
       try {
-        // Firestore 'in' query max 30 items
+
         const batchIds = targetUserIds.slice(0, 30);
         const userDocs = await Promise.all(
           batchIds.map(uid => getDoc(doc(db, 'users', uid)))
@@ -55,8 +46,7 @@ export function useFollowList(userId, type) {
     return () => unsubscribe();
   }, [userId, type]);
 
-  // Filter lokal — hemat Firestore reads
-  const filteredList = searchQuery.trim()
+  const filteredList = searchQuery
     ? list.filter(user => {
         const q = searchQuery.toLowerCase();
         return user.username?.toLowerCase().includes(q) || user.displayName?.toLowerCase().includes(q);
@@ -66,11 +56,6 @@ export function useFollowList(userId, type) {
   return { list: filteredList, isLoading, searchQuery, setSearchQuery };
 }
 
-/**
- * Subscribe realtime ke follow requests masuk untuk user tertentu.
- * @param {string} userId
- * @returns {{ requests: Object[], isLoading: boolean }}
- */
 export function useFollowRequests(userId) {
   const [requests, setRequests] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -112,14 +97,6 @@ export function useFollowRequests(userId) {
   return { requests, isLoading };
 }
 
-/**
- * Saran follow berdasarkan mutual followers.
- * Algoritma: ambil follower dari user yang kita follow,
- * filter yang belum kita follow dan bukan diri sendiri.
- * @param {string} currentUserId
- * @param {string[]} followingIds - Array UID yang sudah di-follow
- * @returns {{ suggestions: Object[], isLoading: boolean }}
- */
 export function usePeopleYouMayKnow(currentUserId, followingIds) {
   const [suggestions, setSuggestions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -136,7 +113,7 @@ export function usePeopleYouMayKnow(currentUserId, followingIds) {
     async function fetchSuggestions() {
       setIsLoading(true);
       try {
-        // Ambil follower dari user-user yang kita follow (mutual network)
+
         const sampleFollowing = followingIds.slice(0, 5);
         const followerSets = await Promise.all(
           sampleFollowing.map(uid =>
@@ -151,7 +128,7 @@ export function usePeopleYouMayKnow(currentUserId, followingIds) {
           snap.docs.forEach(d => {
             const { followerId } = d.data();
             if (
-              followerId !== currentUserId && 
+              followerId !== currentUserId &&
               !followingIds.includes(followerId) &&
               !blockedIds.has(followerId)
             ) {
@@ -185,13 +162,6 @@ export function usePeopleYouMayKnow(currentUserId, followingIds) {
   return { suggestions, isLoading };
 }
 
-/**
- * Menghitung mutual followers antara current user dan target.
- * Output UI: "Diikuti oleh si_a, si_b, dan 5 lainnya"
- * @param {string} currentUserId
- * @param {string} targetUserId
- * @returns {{ mutualCount: number, mutualPreview: Object[] }}
- */
 export function useMutualFollowers(currentUserId, targetUserId) {
   const [mutualCount, setMutualCount] = useState(0);
   const [mutualPreview, setMutualPreview] = useState([]);
@@ -238,18 +208,10 @@ export function useMutualFollowers(currentUserId, targetUserId) {
   return { mutualCount, mutualPreview };
 }
 
-/**
- * Cek status follow antara dua user secara realtime.
- * Menggunakan onSnapshot per dokumen (bukan query) untuk menghindari kebutuhan composite index
- * dan masalah permission-denied saat dokumen belum ada.
- * @param {string} followerId
- * @param {string} targetId
- * @returns {{ status: 'following'|'pending'|'not_following', isLoading: boolean }}
- */
 export function useFollowStatus(followerId, targetId) {
   const [status, setStatus] = useState('not_following');
   const [isLoading, setIsLoading] = useState(true);
-  // Track kedua state secara terpisah
+
   const isFollowing = useRef(false);
   const isPending = useRef(false);
 
@@ -266,7 +228,6 @@ export function useFollowStatus(followerId, targetId) {
       setIsLoading(false);
     }
 
-    // Doc ID deterministik — tidak butuh composite index
     const unsubFollow = onSnapshot(
       doc(db, 'follows', `${followerId}_${targetId}`),
       (snap) => {
@@ -276,7 +237,6 @@ export function useFollowStatus(followerId, targetId) {
       () => { setIsLoading(false); }
     );
 
-    // followRequests dibaca sebagai single doc — lebih aman terhadap rules
     const unsubRequest = onSnapshot(
       doc(db, 'followRequests', `${followerId}_${targetId}`),
       (snap) => {
@@ -284,7 +244,7 @@ export function useFollowStatus(followerId, targetId) {
         syncStatus();
       },
       () => {
-        // Permission denied (dokumen tidak ada) — anggap bukan pending
+
         isPending.current = false;
         syncStatus();
       }
@@ -295,4 +255,3 @@ export function useFollowStatus(followerId, targetId) {
 
   return { status, isLoading };
 }
-

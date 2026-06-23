@@ -17,18 +17,14 @@ import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 
-/**
- * ExploreScreen — temukan pengguna baru, postingan, dan People You May Know.
- */
 export default function ExploreScreen() {
   const { user } = useAuthStore();
   const navigation = useNavigation();
   const [query, setQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchTab, setSearchTab] = useState('users'); // 'users' or 'posts'
+  const [searchTab, setSearchTab] = useState('users');
 
-  // Ambil followingIds untuk algoritma PYMK
   const { list: followingList } = useFollowList(user?.uid, 'following');
   const followingIds = followingList.map(u => u.uid || u.id);
 
@@ -46,7 +42,7 @@ export default function ExploreScreen() {
   async function performSearch(searchText, tab) {
     if (searchText.trim().length < 2) return;
     setIsSearching(true);
-    
+
     if (tab === 'users') {
       const { data } = await searchUsers(searchText.trim().toLowerCase(), user?.uid);
       setSearchResults(data || []);
@@ -59,7 +55,7 @@ export default function ExploreScreen() {
       }
       setSearchResults(fetchedPosts);
     }
-    
+
     setIsSearching(false);
   }
 
@@ -79,8 +75,8 @@ export default function ExploreScreen() {
   const isSearchMode = query.trim().length >= 2;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      {/* Search Bar */}
+    <SafeAreaView style={styles.safe} edges={['top', 'bottom']}>
+      {}
       <View style={styles.searchBar}>
         <Ionicons name="search" size={18} color={colors.textSecondary} style={styles.searchIcon} />
         <TextInput
@@ -102,15 +98,15 @@ export default function ExploreScreen() {
         )}
       </View>
 
-      {/* Tabs */}
+      {}
       <View style={styles.tabContainer}>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.tab, searchTab === 'users' && styles.activeTab]}
           onPress={() => handleTabChange('users')}
         >
           <Text style={[styles.tabText, searchTab === 'users' && styles.activeTabText]}>Pengguna</Text>
         </TouchableOpacity>
-        <TouchableOpacity 
+        <TouchableOpacity
           style={[styles.tab, searchTab === 'posts' && styles.activeTab]}
           onPress={() => handleTabChange('posts')}
         >
