@@ -2,80 +2,176 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // =========================================================================
+    // GLOBAL HELPER FUNCTIONS
+    // =========================================================================
+
+    /**
+     * Memastikan request dikirim oleh user yang sudah login/terotentikasi.
+     */
     function isAuthenticated() {
       return request.auth != null;
     }
 
+    /**
+     * Memastikan user hanya bisa mengelola data miliknya sendiri.
+     * @param userId - UID user yang divalidasi.
+     */
     function isOwner(userId) {
       return request.auth.uid == userId;
     }
 
+    /**
+     * Memeriksa apakah user saat ini adalah partisipan di percakapan tertentu.
+     * Digunakan untuk mengamankan data pesan (messages subcollection).
+     * @param conversationId - ID dari percakapan.
+     */
     function isParticipant(conversationId) {
       return request.auth.uid in get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds;
     }
 
+    /**
+     * Memeriksa status blokir antara user yang masuk dengan target user.
+     * @param targetUserId - ID dari user yang ingin dicek status blokirnya.
+     */
     function isBlocked(targetUserId) {
       return exists(/databases/$(database)/documents/blocks/$(targetUserId + '_' + request.auth.uid));
     }
 
+    // =========================================================================
+    // COLLECTION: USERS (/users/{userId})
+    // Menyimpan data profil dasar pengguna (displayName, username, photoURL, followersCount, dll.)
+    // =========================================================================
     match /users/{userId} {
+      // Siapapun yang login bisa membaca data user lainnya.
       allow read: if isAuthenticated();
+      
+      // Hanya user pemilik akun yang bisa mendaftarkan profilnya (create).
       allow create: if isOwner(userId);
+      
+      // User hanya bisa memperbarui data profilnya sendiri (update),
+      // KECUALI untuk penambahan/pengurangan followers/following count yang diupdate asinkron oleh sistem/user lain.
       allow update: if isOwner(userId)
         || (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount']))
         || (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followingCount']))
         || (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['followersCount', 'followingCount']));
+      
+      // Penghapusan akun dinonaktifkan di level rules demi integritas social graph.
       allow delete: if false;
     }
 
+    // =========================================================================
+    // COLLECTION: POSTS (/posts/{postId})
+    // Menyimpan data postingan (authorId, imageUrl, caption, likesCount, commentsCount, dll.)
+    // =========================================================================
     match /posts/{postId} {
+      // Semua postingan dapat dilihat oleh user yang login.
       allow read: if isAuthenticated();
+      
+      // Pengguna yang login bisa membuat postingan dengan syarat authorId harus cocok dengan UID pengirim.
       allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
+      
+      // Hanya pemilik postingan yang bisa merubah caption/konten post.
+      // Pengguna lain yang terotentikasi hanya diizinkan meng-increment/decrement count likes atau comments.
       allow update: if isOwner(resource.data.authorId)
         || (isAuthenticated() && (
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likesCount'])
           || request.resource.data.diff(resource.data).affectedKeys().hasOnly(['commentsCount'])
         ));
+      
+      // Hanya pemilik postingan yang berhak menghapus postingannya.
       allow delete: if isOwner(resource.data.authorId);
 
+      // -----------------------------------------------------------------------
+      // SUB-COLLECTION: COMMENTS (/posts/{postId}/comments/{commentId})
+      // Menyimpan daftar komentar per-postingan.
+      // -----------------------------------------------------------------------
       match /comments/{commentId} {
+        // Semua user yang login dapat membaca daftar komentar.
         allow read: if isAuthenticated();
+        
+        // Menulis komentar baru harus menyertakan authorId yang sesuai dengan pengirim.
         allow create: if isAuthenticated() && request.resource.data.authorId == request.auth.uid;
+        
+        // Hanya pembuat komentar yang bisa menghapus komentarnya sendiri.
         allow delete: if isOwner(resource.data.authorId);
       }
     }
 
+    // =========================================================================
+    // COLLECTION: CONVERSATIONS (/conversations/{conversationId})
+    // Mengamankan percakapan DM 1-on-1 antar pengguna.
+    // =========================================================================
     match /conversations/{conversationId} {
-			allow get: if isAuthenticated() && (resource == null || request.auth.uid in resource.data.participantIds);
+      // Akses get/list ke percakapan hanya diizinkan untuk partisipan yang UID-nya terdaftar di array participantIds.
+      allow get: if isAuthenticated() && (resource == null || request.auth.uid in resource.data.participantIds);
       allow list: if isAuthenticated() && request.auth.uid in resource.data.participantIds;
+      
+      // Membuat percakapan baru diizinkan jika UID pembuat termasuk dalam array participantIds.
       allow create: if isAuthenticated() && request.auth.uid in request.resource.data.participantIds;
+      
+      // Mengubah metadata percakapan (seperti lastMessage, updatedAt) hanya diizinkan bagi partisipan chat.
       allow update: if isAuthenticated() && request.auth.uid in resource.data.participantIds;
 
+      // -----------------------------------------------------------------------
+      // SUB-COLLECTION: MESSAGES (/conversations/{conversationId}/messages/{messageId})
+      // Menyimpan pesan terenkripsi, gambar, atau audio note dalam chat.
+      // -----------------------------------------------------------------------
       match /messages/{messageId} {
+        // Hanya partisipan chat tersebut yang boleh membaca daftar pesan.
         allow read: if isAuthenticated() && isParticipant(conversationId);
+        
+        // Menulis pesan baru hanya diizinkan bagi partisipan, dan senderId harus cocok dengan UID pengirim.
         allow create: if isAuthenticated() && isParticipant(conversationId)
           && request.resource.data.senderId == request.auth.uid;
+        
+        // Memperbarui pesan (misalnya untuk emoji reactions atau menandai read receipts) diizinkan bagi partisipan.
         allow update: if isAuthenticated() && isParticipant(conversationId);
+        
+        // Penghapusan pesan dinonaktifkan demi keaslian log percakapan.
         allow delete: if false;
       }
     }
 
+    // =========================================================================
+    // COLLECTION: FOLLOWS (/follows/{followId})
+    // Relasi pengikut/diikuti antara user (followerId -> followingId)
+    // ID dokumen berformat: [followerId]_[followingId]
+    // =========================================================================
     match /follows/{followId} {
+      // Semua user yang login dapat membaca daftar relasi follow.
       allow read: if isAuthenticated();
+      
+      // Membuat/mengubah relasi follow harus memuat UID pengirim sebagai pihak follower atau following.
       allow create, update: if isAuthenticated() && (request.resource.data.followerId == request.auth.uid || request.resource.data.followingId == request.auth.uid);
+      
+      // Menghapus hubungan follow (Unfollow) hanya diizinkan oleh salah satu pihak yang bersangkutan.
       allow delete: if isAuthenticated() && (resource == null || resource.data.followerId == request.auth.uid || resource.data.followingId == request.auth.uid);
     }
 
+    // =========================================================================
+    // COLLECTION: FOLLOW REQUESTS (/followRequests/{requestId})
+    // Permintaan follow untuk akun privat (pending -> approved/rejected)
+    // ID dokumen berformat: [fromUserId]_[toUserId]
+    // =========================================================================
     match /followRequests/{requestId} {
+      // Membaca permintaan follow hanya diizinkan bagi pengirim (fromUserId) atau penerima (toUserId).
       allow read: if isAuthenticated() && (
         resource.data.fromUserId == request.auth.uid ||
         resource.data.toUserId == request.auth.uid
       );
+      
+      // Membuat permintaan follow baru harus menyertakan fromUserId yang cocok dengan UID pengirim.
       allow create: if isAuthenticated() && request.resource.data.fromUserId == request.auth.uid;
+      
+      // Penerima (toUserId) bisa meng-update status permintaan (terima/tolak).
+      // Pengirim (fromUserId) hanya diperbolehkan mengupdate jika statusnya diubah/dikembangkan ke 'pending'.
       allow update: if isAuthenticated() && (
         resource.data.toUserId == request.auth.uid ||
         (resource.data.fromUserId == request.auth.uid && request.resource.data.status == 'pending')
       );
+      
+      // Membatalkan atau menolak permintaan (delete) hanya bisa dilakukan oleh pihak pengirim atau penerima.
       allow delete: if isAuthenticated() && (
         resource == null ||
         resource.data.fromUserId == request.auth.uid ||
@@ -83,29 +179,65 @@ service cloud.firestore {
       );
     }
 
+    // =========================================================================
+    // COLLECTION: NOTIFICATIONS (/notifications/{notifId})
+    // Riwayat aktivitas masuk (in-app notifications untuk like, comment, follow, dll.)
+    // =========================================================================
     match /notifications/{notifId} {
+      // Semua user yang login dapat membaca daftar notifikasinya.
       allow read: if isAuthenticated();
+      
+      // Semua user yang login diperbolehkan mengirimkan sinyal notifikasi (create).
       allow create: if isAuthenticated();
+      
+      // Mengubah notifikasi (seperti menandai read: true atau mengelompokkan notifikasi sejenis)
+      // diizinkan oleh penerima (recipientId) atau sistem yang melakukan agregasi actor.
       allow update: if isAuthenticated() && (
         resource.data.recipientId == request.auth.uid ||
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['actorIds', 'actorCount', 'updatedAt'])
       );
     }
 
+    // =========================================================================
+    // COLLECTION: BLOCKS (/blocks/{blockId})
+    // Mengatur hubungan pemblokiran antar akun (blockerId -> blockedId)
+    // ID dokumen berformat: [blockerId]_[blockedId]
+    // =========================================================================
     match /blocks/{blockId} {
+      // Hanya pihak pemblokir atau pihak yang diblokir yang berhak melihat status hubungan ini.
       allow read: if isAuthenticated() && (resource == null || resource.data.blockerId == request.auth.uid || resource.data.blockedId == request.auth.uid);
+      
+      // Hanya pembuat blokir (blockerId) yang bisa mengirim sinyal blokir (create).
       allow create: if isAuthenticated() && request.resource.data.blockerId == request.auth.uid;
+      
+      // Hanya pemblokir yang berhak melepas blokirannya (unblock).
       allow delete: if isAuthenticated() && (resource == null || resource.data.blockerId == request.auth.uid);
     }
 
+    // =========================================================================
+    // COLLECTION: MUTES (/mutes/{muteId})
+    // Mengatur pembisuan postingan/status pengguna tanpa memutus hubungan pertemanan.
+    // =========================================================================
     match /mutes/{muteId} {
+      // Membaca status mute hanya bisa dilakukan oleh pihak pembuat mute (muterId).
       allow read: if isAuthenticated() && resource.data.muterId == request.auth.uid;
+      
+      // Menambah/menghapus mute hanya bisa dilakukan oleh muterId.
       allow write: if isAuthenticated() && request.resource.data.muterId == request.auth.uid;
     }
 
+    // =========================================================================
+    // COLLECTION: LIKES (/likes/{likeId})
+    // Pencatatan status menyukai postingan (userId -> postId)
+    // =========================================================================
     match /likes/{likeId} {
+      // Semua user yang login dapat membaca data like (misal daftar user yang menyukai postingan).
       allow read: if isAuthenticated();
+      
+      // Memberikan like harus menyertakan userId yang sesuai dengan UID pengirim.
       allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+      
+      // Menarik kembali like (unlike) hanya diizinkan untuk pembuat like tersebut.
       allow delete: if isAuthenticated() && resource.data.userId == request.auth.uid;
     }
   }
