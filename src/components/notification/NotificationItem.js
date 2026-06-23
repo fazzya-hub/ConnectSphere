@@ -31,7 +31,7 @@ const MSG_MAP = {
  * @param {Function} props.onPress - Handler saat item ditekan
  */
 export default function NotificationItem({ notif, onPress }) {
-  const iconInfo = ICON_MAP[notif.type] || { icon: 'bell', color: colors.textSecondary };
+  const iconInfo = ICON_MAP[notif.type] || { icon: 'notifications', color: colors.textSecondary };
   const msg = MSG_MAP[notif.type] || 'Ada aktivitas baru.';
   const actorName = notif.actorName || 'Seseorang';
   const timeText = notif.createdAt?.toDate

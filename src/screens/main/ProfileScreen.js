@@ -19,7 +19,6 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Avatar from '../../components/common/Avatar';
 import Button from '../../components/common/Button';
 import Loader from '../../components/common/Loader';
-import LiveStatusControl from '../../components/live/LiveStatusControl';
 import { useAuth } from '../../hooks/useAuth';
 import { getPostsByAuthor, getUserById } from '../../services/firestoreService';
 import { uploadProfilePhoto } from '../../services/storageService';
@@ -135,12 +134,6 @@ export default function ProfileScreen() {
         <Text style={styles.username}>@{profile?.username}</Text>
         {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
         </View>
-
-        <LiveStatusControl
-          userId={user.uid}
-          liveStatus={profile?.liveStatus}
-          liveStatusEnabled={profile?.liveStatusEnabled}
-        />
 
         <View style={styles.statsRow}>
         <View style={styles.statItem}>

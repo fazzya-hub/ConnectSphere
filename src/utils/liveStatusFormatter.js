@@ -7,9 +7,9 @@ export function formatLiveStatus(liveStatus) {
 
   switch (liveStatus.type) {
     case 'listening':
-      return `Lagi mendengarkan ${liveStatus.songTitle} - ${liveStatus.artistName}`;
+      return `${liveStatus.songTitle} - ${liveStatus.artistName}`;
     case 'location':
-      return `Sedang di ${liveStatus.placeName}`;
+      return `${liveStatus.placeName}`;
     default:
       return null;
   }
