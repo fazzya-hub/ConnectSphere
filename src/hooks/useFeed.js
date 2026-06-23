@@ -7,23 +7,17 @@ import {
   limit,
   onSnapshot,
 } from 'firebase/firestore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { db } from '../config/firebase';
 
 const PAGE_SIZE = 10;
+const FEED_CACHE_KEY = 'connectsphere:feed:posts';
 
-/**
- * Hook untuk feed real-time dengan onSnapshot.
- * Setiap perubahan pada post (likesCount, commentsCount, dll) langsung
- * terefleksi tanpa perlu refresh manual.
- * @param {string[]} followingIds - Array UID yang di-follow + diri sendiri
- * @returns {{ posts, isLoading, isRefreshing, refresh }}
- */
 export function useFeed(followingIds) {
   const [posts, setPosts] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Set referensi unsubscribe untuk di-cleanup
   const unsubscribeRef = useRef(null);
 
   function subscribe(ids, onSettled) {
@@ -38,13 +32,18 @@ export function useFeed(followingIds) {
 
     return onSnapshot(
       q,
-      (snapshot) => {
+      async (snapshot) => {
         const newPosts = snapshot.docs.map((d) => ({ id: d.id, ...d.data() }));
         setPosts(newPosts);
+        await AsyncStorage.setItem(FEED_CACHE_KEY, JSON.stringify(newPosts));
         if (onSettled) onSettled();
       },
-      (error) => {
+      async (error) => {
         console.error('[useFeed] onSnapshot error:', error);
+        const cached = await AsyncStorage.getItem(FEED_CACHE_KEY);
+        if (cached) {
+          setPosts(JSON.parse(cached));
+        }
         if (onSettled) onSettled();
       }
     );
@@ -55,7 +54,6 @@ export function useFeed(followingIds) {
 
     setIsLoading(true);
 
-    // Cleanup listener lama jika followingIds berubah
     if (unsubscribeRef.current) {
       unsubscribeRef.current();
     }
@@ -72,11 +70,6 @@ export function useFeed(followingIds) {
     };
   }, [followingIds]);
 
-  /**
-   * Trigger pull-to-refresh: re-subscribe listener untuk
-   * snapshot terbaru. Listener yang ada sudah real-time,
-   * tapi ini memastikan UI terasa responsif saat user swipe-down.
-   */
   function refresh() {
     if (!followingIds || followingIds.length === 0) return;
 

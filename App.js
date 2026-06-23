@@ -3,21 +3,22 @@ import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { useFonts } from 'expo-font';
-import { 
+import {
   Sora_400Regular,
   Sora_500Medium,
   Sora_600SemiBold,
-  Sora_700Bold 
+  Sora_700Bold
 } from '@expo-google-fonts/sora';
 import * as Notifications from 'expo-notifications';
 
 import RootNavigator from './src/navigation/RootNavigator';
+import OfflineBanner from './src/components/common/OfflineBanner';
 import useAuthStore from './src/store/authStore';
 import { subscribeToAuthState } from './src/services/authService';
-import { registerFCMToken } from './src/services/notificationService';
+import { registerForPushNotificationsAsync, saveFCMToken } from './src/services/notificationService';
+import { ThemeProvider } from './src/theme/themeContext';
 import { colors } from './src/theme';
 
-// Handler saat app di-foreground
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: true,
@@ -30,7 +31,7 @@ export default function App() {
   const setUser = useAuthStore((state) => state.setUser);
   const navigationRef = useNavigationContainerRef();
   const notifResponseListener = useRef();
-  
+
   let [fontsLoaded] = useFonts({
     Sora_400Regular,
     Sora_500Medium,
@@ -39,24 +40,22 @@ export default function App() {
   });
 
   useEffect(() => {
-    let prevUserId = null;
-
-    const unsubscribe = subscribeToAuthState((user) => {
+    const unsubscribe = subscribeToAuthState(async (user) => {
       setUser(user);
-
-      // Register FCM token on login
-      if (user?.uid && user.uid !== prevUserId) {
-        registerFCMToken(user.uid);
-        prevUserId = user.uid;
-      } else if (!user) {
-        prevUserId = null;
+      if (user?.uid) {
+        try {
+          const token = await registerForPushNotificationsAsync();
+          if (token) {
+            await saveFCMToken(user.uid, token);
+          }
+        } catch (error) {
+          console.error('Error setting up push notifications:', error);
+        }
       }
     });
-
     return unsubscribe;
   }, [setUser]);
 
-  // Deep link dari notifikasi — redirect ke screen yang relevan saat notifikasi diklik
   useEffect(() => {
     notifResponseListener.current =
       Notifications.addNotificationResponseReceivedListener((response) => {
@@ -92,10 +91,13 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      <NavigationContainer ref={navigationRef}>
-        <RootNavigator />
-        <StatusBar style="light" backgroundColor={colors.background} />
-      </NavigationContainer>
+      <ThemeProvider>
+        <NavigationContainer ref={navigationRef}>
+          <OfflineBanner />
+          <RootNavigator />
+          <StatusBar style="light" backgroundColor={colors.background} />
+        </NavigationContainer>
+      </ThemeProvider>
     </SafeAreaProvider>
   );
 }

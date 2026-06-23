@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
@@ -7,16 +8,19 @@ import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { colors, typography, spacing } from '../../theme';
 import Loader from '../../components/common/Loader';
+import useThemeStore from '../../store/themeStore';
 
 export default function SettingsScreen() {
   const { user, signOut } = useAuth();
   const navigation = useNavigation();
   const [isPrivate, setIsPrivate] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const themeMode = useThemeStore((state) => state.mode);
+  const toggleThemeMode = useThemeStore((state) => state.toggleMode);
 
   useEffect(() => {
     if (!user?.uid) return;
-    
+
     const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (snap) => {
       if (snap.exists()) {
         const data = snap.data();
@@ -31,7 +35,7 @@ export default function SettingsScreen() {
   const togglePrivacy = async () => {
     const newValue = !isPrivate;
     setIsPrivate(newValue);
-    
+
     try {
       await updateDoc(doc(db, 'users', user.uid), { isPrivate: newValue });
     } catch (error) {
@@ -46,8 +50,8 @@ export default function SettingsScreen() {
       'Apakah Anda yakin ingin keluar?',
       [
         { text: 'Batal', style: 'cancel' },
-        { 
-          text: 'Keluar', 
+        {
+          text: 'Keluar',
           style: 'destructive',
           onPress: async () => {
             const { error } = await signOut();
@@ -63,18 +67,19 @@ export default function SettingsScreen() {
   if (isLoading) return <Loader />;
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.header}>
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ScrollView style={styles.container}>
+        <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.title}>Pengaturan</Text>
         <View style={styles.placeholder} />
-      </View>
+        </View>
 
-      <View style={styles.content}>
+        <View style={styles.content}>
         <Text style={styles.sectionTitle}>Akun</Text>
-        
+
         <View style={styles.settingItem}>
           <View>
             <Text style={styles.settingLabel}>Akun Privat</Text>
@@ -90,8 +95,23 @@ export default function SettingsScreen() {
           />
         </View>
 
-        <TouchableOpacity 
-          style={styles.navItem} 
+        <View style={styles.settingItem}>
+          <View>
+            <Text style={styles.settingLabel}>Mode Terang</Text>
+            <Text style={styles.settingDescription}>
+              Simpan preferensi tampilan terang atau gelap di perangkat ini.
+            </Text>
+          </View>
+          <Switch
+            trackColor={{ false: colors.border, true: colors.primary }}
+            thumbColor={colors.surface}
+            onValueChange={toggleThemeMode}
+            value={themeMode === 'light'}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={styles.navItem}
           onPress={() => navigation.navigate('NotificationPreferences')}
         >
           <Text style={styles.settingLabel}>Notifikasi & Privasi</Text>
@@ -99,8 +119,8 @@ export default function SettingsScreen() {
         </TouchableOpacity>
 
         {isPrivate && (
-          <TouchableOpacity 
-            style={styles.navItem} 
+          <TouchableOpacity
+            style={styles.navItem}
             onPress={() => navigation.navigate('FollowRequests')}
           >
             <Text style={styles.settingLabel}>Permintaan Mengikuti</Text>
@@ -114,8 +134,9 @@ export default function SettingsScreen() {
           <Ionicons name="log-out-outline" size={20} color={colors.error} />
           <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
