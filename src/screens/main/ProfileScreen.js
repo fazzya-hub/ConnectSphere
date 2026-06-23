@@ -11,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
@@ -18,6 +19,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import Avatar from '../../components/common/Avatar';
 import Button from '../../components/common/Button';
 import Loader from '../../components/common/Loader';
+import LiveStatusControl from '../../components/live/LiveStatusControl';
 import { useAuth } from '../../hooks/useAuth';
 import { getPostsByAuthor, getUserById } from '../../services/firestoreService';
 import { uploadProfilePhoto } from '../../services/storageService';
@@ -41,8 +43,7 @@ export default function ProfileScreen() {
   const loadProfile = useCallback(async () => {
     if (!user?.uid) return;
     setIsLoading(true);
-    
-    // Auto-sync stats to fix any -1 or out-of-sync numbers
+
     await syncFollowCounts(user.uid);
 
     const { data: postsData } = await getPostsByAuthor(user.uid);
@@ -56,7 +57,6 @@ export default function ProfileScreen() {
     }, [loadProfile])
   );
 
-  // Real-time listener untuk profile stats
   useEffect(() => {
     if (!user?.uid) return;
     const unsubscribe = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
@@ -101,7 +101,6 @@ export default function ProfileScreen() {
         return;
       }
 
-      // Refresh the local profile state
       setProfile(prev => ({ ...prev, photoURL: downloadURL }));
     } catch (err) {
       Alert.alert('Gagal', 'Terjadi kesalahan saat mengganti foto profil.');
@@ -113,16 +112,17 @@ export default function ProfileScreen() {
   if (!user) return <Loader />;
 
   return (
-    <ScrollView style={styles.container}>
-      <View style={styles.profileHeader}>
-        {/* Pressable Avatar */}
+    <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
+      <ScrollView style={styles.container}>
+        <View style={styles.profileHeader}>
+        {}
         <Pressable style={styles.avatarWrapper} onPress={handleChangeAvatar} disabled={isUploadingAvatar}>
           <Avatar
             uri={profile?.photoURL}
             name={profile?.displayName || profile?.username}
             size={88}
           />
-          {/* Edit badge overlay */}
+          {}
           <View style={styles.avatarEditBadge}>
             {isUploadingAvatar ? (
               <ActivityIndicator size={12} color={colors.textInverse} />
@@ -134,9 +134,15 @@ export default function ProfileScreen() {
         <Text style={styles.displayName}>{profile?.displayName || profile?.username}</Text>
         <Text style={styles.username}>@{profile?.username}</Text>
         {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
-      </View>
+        </View>
 
-      <View style={styles.statsRow}>
+        <LiveStatusControl
+          userId={user.uid}
+          liveStatus={profile?.liveStatus}
+          liveStatusEnabled={profile?.liveStatusEnabled}
+        />
+
+        <View style={styles.statsRow}>
         <View style={styles.statItem}>
           <Text style={styles.statCount}>{Math.max(0, profile?.postsCount ?? 0)}</Text>
           <Text style={styles.statLabel}>Post</Text>
@@ -155,18 +161,18 @@ export default function ProfileScreen() {
           <Text style={styles.statCount}>{Math.max(0, profile?.followingCount ?? 0)}</Text>
           <Text style={styles.statLabel}>Following</Text>
         </Pressable>
-      </View>
+        </View>
 
-      <View style={styles.actions}>
+        <View style={styles.actions}>
         <Button
           title="Edit Profil"
           variant="outline"
           onPress={() => navigation.navigate('Settings')}
           style={styles.actionButton}
         />
-      </View>
+        </View>
 
-      <View style={styles.gridSection}>
+        <View style={styles.gridSection}>
         <Text style={styles.gridTitle}>Post Saya</Text>
         {isLoading ? (
           <Loader size="small" />
@@ -196,8 +202,9 @@ export default function ProfileScreen() {
             })}
           </View>
         )}
-      </View>
-    </ScrollView>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
