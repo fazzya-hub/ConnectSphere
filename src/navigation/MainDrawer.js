@@ -2,11 +2,13 @@ import { createDrawerNavigator } from '@react-navigation/drawer';
 import MainTab from './MainTab';
 import InboxScreen from '../screens/dm/InboxScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
-import { colors } from '../theme';
+import { useAppTheme } from '../theme/themeContext';
 
 const Drawer = createDrawerNavigator();
 
 export default function MainDrawer() {
+  const { colors } = useAppTheme();
+
   return (
     <Drawer.Navigator
       screenOptions={{

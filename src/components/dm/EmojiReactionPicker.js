@@ -1,10 +1,13 @@
 import React from 'react';
 import { Modal, Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 const REACTIONS = ['👍', '❤️', '😂', '😮', '😢', '🔥'];
 
 export default function EmojiReactionPicker({ visible, onClose, onSelect }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   return (
     <Modal transparent visible={visible} animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
@@ -25,7 +28,7 @@ export default function EmojiReactionPicker({ visible, onClose, onSelect }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   backdrop: {
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.35)',

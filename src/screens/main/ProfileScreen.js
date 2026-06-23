@@ -23,7 +23,8 @@ import { useAuth } from '../../hooks/useAuth';
 import { getPostsByAuthor, getUserById } from '../../services/firestoreService';
 import { uploadProfilePhoto } from '../../services/storageService';
 import { syncFollowCounts } from '../../services/socialService';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 import { AUTH_STRINGS } from '../../utils/constants';
 
 const GRID_GAP = 2;
@@ -32,6 +33,8 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const GRID_ITEM_SIZE = Math.floor((SCREEN_WIDTH - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS);
 
 export default function ProfileScreen() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { user, signOut, updateProfile } = useAuth();
   const navigation = useNavigation();
   const [profile, setProfile] = useState(user);
@@ -201,7 +204,7 @@ export default function ProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

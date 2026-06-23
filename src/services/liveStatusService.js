@@ -31,9 +31,10 @@ export async function setLiveStatusEnabled(userId, enabled) {
  * Menyimpan live status lagu dari Android MediaSession.
  * @param {string} userId - UID user
  * @param {{ songTitle: string, artistName: string }} songInfo
+ * @param {boolean} isCloseFriendOnly - Flag untuk menampilkan status hanya ke close friends
  * @returns {Promise<{ data: boolean|null, error: string|null }>}
  */
-export async function setListeningStatus(userId, songInfo) {
+export async function setListeningStatus(userId, songInfo, isCloseFriendOnly = false) {
   try {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await updateDoc(doc(db, 'users', userId), {
@@ -43,6 +44,7 @@ export async function setListeningStatus(userId, songInfo) {
         source: 'mediaSession',
         songTitle: songInfo.songTitle,
         artistName: songInfo.artistName,
+        isCloseFriendOnly,
         expiresAt,
         createdAt: serverTimestamp(),
       },
@@ -59,9 +61,10 @@ export async function setListeningStatus(userId, songInfo) {
  * Menyimpan live status lokasi user berdasarkan koordinat lokal perangkat.
  * @param {string} userId - UID user
  * @param {{ placeName: string, latitude: number, longitude: number }} locationInfo
+ * @param {boolean} isCloseFriendOnly - Flag untuk menampilkan status hanya ke close friends
  * @returns {Promise<{ data: boolean|null, error: string|null }>}
  */
-export async function setLocationStatus(userId, locationInfo) {
+export async function setLocationStatus(userId, locationInfo, isCloseFriendOnly = false) {
   try {
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     await updateDoc(doc(db, 'users', userId), {
@@ -72,6 +75,7 @@ export async function setLocationStatus(userId, locationInfo) {
         placeName: locationInfo.placeName,
         latitude: locationInfo.latitude,
         longitude: locationInfo.longitude,
+        isCloseFriendOnly,
         expiresAt,
         createdAt: serverTimestamp(),
       },
@@ -98,6 +102,25 @@ export async function clearLiveStatus(userId) {
     return { data: true, error: null };
   } catch (error) {
     console.error('[liveStatusService] clearLiveStatus error:', error.message);
+    return { data: null, error: error.message };
+  }
+}
+
+/**
+ * Memperbarui visibilitas close friends pada live status aktif.
+ * @param {string} userId - UID user
+ * @param {boolean} isCloseFriendOnly - Flag visibilitas status
+ * @returns {Promise<{ data: boolean|null, error: string|null }>}
+ */
+export async function updateLiveStatusVisibility(userId, isCloseFriendOnly) {
+  try {
+    await updateDoc(doc(db, 'users', userId), {
+      'liveStatus.isCloseFriendOnly': isCloseFriendOnly,
+      updatedAt: serverTimestamp(),
+    });
+    return { data: true, error: null };
+  } catch (error) {
+    console.error('[liveStatusService] updateLiveStatusVisibility error:', error.message);
     return { data: null, error: error.message };
   }
 }

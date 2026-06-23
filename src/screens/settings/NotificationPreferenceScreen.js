@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { updateNotificationPreferences } from '../../services/notificationService';
-import { colors } from '../../theme/colors';
+import { useAppTheme } from '../../theme/themeContext';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -13,6 +13,8 @@ import { db } from '../../config/firebase';
 import Loader from '../../components/common/Loader';
 
 export default function NotificationPreferenceScreen() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { user } = useAuth();
   const navigation = useNavigation();
   const [prefs, setPrefs] = useState({
@@ -116,7 +118,7 @@ export default function NotificationPreferenceScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',

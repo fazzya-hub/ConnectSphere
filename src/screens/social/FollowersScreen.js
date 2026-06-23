@@ -8,7 +8,7 @@ import UserCard from '../../components/social/UserCard';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
 import { useFollowList } from '../../hooks/useSocialGraph';
-import { colors } from '../../theme/colors';
+import { useAppTheme } from '../../theme/themeContext';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 
@@ -16,6 +16,8 @@ import { spacing } from '../../theme/spacing';
  * FollowersScreen — daftar followers sebuah user dengan pencarian lokal.
  */
 export default function FollowersScreen() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const route = useRoute();
   const navigation = useNavigation();
   const { userId } = route.params || {};
@@ -61,7 +63,7 @@ export default function FollowersScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   header: {
     paddingHorizontal: spacing.md,

@@ -4,9 +4,12 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { toggleLike, checkIsLiked } from '../../services/firestoreService';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 export default function PostActions({ post }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const navigation = useNavigation();
   const { user } = useAuth();
   const [isLiked, setIsLiked] = useState(false);
@@ -71,7 +74,7 @@ export default function PostActions({ post }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.xs,

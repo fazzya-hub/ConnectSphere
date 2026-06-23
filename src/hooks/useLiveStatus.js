@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { collection, onSnapshot, query, where } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import useLiveStatusStore from '../store/liveStatusStore';
+import useAuthStore from '../store/authStore';
 import { formatLiveStatus } from '../utils/liveStatusFormatter';
 
 /**
@@ -15,6 +16,8 @@ export function useLiveStatus(userIds = []) {
   const [isLoading, setIsLoading] = useState(false);
   const setLiveStatus = useLiveStatusStore((state) => state.setLiveStatus);
   const clearAllLiveStatuses = useLiveStatusStore((state) => state.clearAllLiveStatuses);
+  const currentUser = useAuthStore((state) => state.user);
+  const currentUserId = currentUser?.uid;
 
   const stableIds = useMemo(
     () => [...new Set(userIds.filter(Boolean))].sort(),
@@ -44,8 +47,11 @@ export function useLiveStatus(userIds = []) {
         (snapshot) => {
           snapshot.docs.forEach((docSnap) => {
             const user = { id: docSnap.id, ...docSnap.data() };
-            const liveText = user.liveStatusEnabled ? formatLiveStatus(user.liveStatus) : null;
             const uid = user.uid || user.id;
+
+            const isCloseFriendOnly = user.liveStatus?.isCloseFriendOnly === true;
+            const isCFVisible = !isCloseFriendOnly || (user.closeFriends && user.closeFriends.includes(currentUserId));
+            const liveText = (user.liveStatusEnabled && isCFVisible) ? formatLiveStatus(user.liveStatus) : null;
 
             if (liveText) {
               nextById.set(uid, { ...user, liveText });

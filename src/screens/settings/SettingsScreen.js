@@ -6,11 +6,14 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { doc, onSnapshot, updateDoc } from 'firebase/firestore';
 import { db } from '../../config/firebase';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 import Loader from '../../components/common/Loader';
 import useThemeStore from '../../store/themeStore';
 
 export default function SettingsScreen() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { user, signOut } = useAuth();
   const navigation = useNavigation();
   const [isPrivate, setIsPrivate] = useState(false);
@@ -133,7 +136,7 @@ export default function SettingsScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

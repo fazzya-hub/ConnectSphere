@@ -1,5 +1,6 @@
 import { Pressable, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 export default function Button({
   title,
@@ -9,6 +10,8 @@ export default function Button({
   loading = false,
   style,
 }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const isPrimary = variant === 'primary';
   const isOutline = variant === 'outline';
 
@@ -42,7 +45,7 @@ export default function Button({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   button: {
     paddingVertical: spacing.sm + 2,
     paddingHorizontal: spacing.lg,

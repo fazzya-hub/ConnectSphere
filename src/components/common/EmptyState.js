@@ -1,7 +1,10 @@
 import { View, Text, StyleSheet } from 'react-native';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 export default function EmptyState({ message = 'Tidak ada data' }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   return (
     <View style={styles.container}>
       <Text style={styles.message}>{message}</Text>
@@ -9,7 +12,7 @@ export default function EmptyState({ message = 'Tidak ada data' }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,7 +1,8 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import Avatar from '../common/Avatar';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 /**
  * Menampilkan info mutual followers antara current user dan target.
@@ -12,6 +13,8 @@ import { colors, typography, spacing } from '../../theme';
  * @param {Function} [props.onPress] - Handler saat di-tap
  */
 export default function SocialGraphStats({ mutualCount, mutualPreview, onPress }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   if (mutualCount === 0) return null;
 
   const renderText = () => {
@@ -62,7 +65,7 @@ export default function SocialGraphStats({ mutualCount, mutualPreview, onPress }
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',

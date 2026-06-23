@@ -10,18 +10,19 @@ import FollowersScreen from '../screens/social/FollowersScreen';
 import FollowingScreen from '../screens/social/FollowingScreen';
 import FollowRequestScreen from '../screens/social/FollowRequestScreen';
 import NotificationPreferenceScreen from '../screens/settings/NotificationPreferenceScreen';
-import { colors } from '../theme';
+import { useAppTheme } from '../theme/themeContext';
 
 const Stack = createNativeStackNavigator();
-
-const modalScreenOptions = {
-  headerShown: false,
-  contentStyle: { backgroundColor: colors.background },
-};
 
 export default function RootNavigator() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const isLoading = useAuthStore((state) => state.isLoading);
+  const { colors } = useAppTheme();
+
+  const modalScreenOptions = {
+    headerShown: false,
+    contentStyle: { backgroundColor: colors.background },
+  };
 
   if (isLoading) {
     return <Loader />;

@@ -10,11 +10,13 @@ import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
 import useAuthStore from '../../store/authStore';
 import useNotificationStore from '../../store/notificationStore';
-import { colors } from '../../theme/colors';
+import { useAppTheme } from '../../theme/themeContext';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 
 export default function NotificationScreen({ navigation }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { user } = useAuthStore();
   const { notifications, isLoading } = useNotifications(user?.uid);
   const { markAllRead } = useNotificationStore();
@@ -116,7 +118,7 @@ export default function NotificationScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,

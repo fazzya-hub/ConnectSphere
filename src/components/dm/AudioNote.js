@@ -2,9 +2,12 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Audio } from 'expo-av';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
-export default function AudioNote({ audioUrl, isComposer = false, onRecorded }) {
+export default function AudioNote({ audioUrl, isComposer = false, onRecorded, isMe = false }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors, isMe);
   const [recording, setRecording] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -96,7 +99,7 @@ export default function AudioNote({ audioUrl, isComposer = false, onRecorded }) 
 
   return (
     <TouchableOpacity style={styles.player} onPress={togglePlayback} activeOpacity={0.75}>
-      <Ionicons name={isPlaying ? 'pause-circle' : 'play-circle'} size={32} color={colors.primary} />
+      <Ionicons name={isPlaying ? 'pause-circle' : 'play-circle'} size={32} color={isMe ? colors.textInverse : colors.primary} />
       <View style={styles.waveform}>
         {[12, 24, 16, 20, 10, 18].map((height, index) => (
           <View key={`${height}-${index}`} style={[styles.bar, { height }]} />
@@ -107,7 +110,7 @@ export default function AudioNote({ audioUrl, isComposer = false, onRecorded }) 
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors, isMe) => StyleSheet.create({
   composerButton: {
     padding: spacing.xs,
   },
@@ -130,11 +133,11 @@ const styles = StyleSheet.create({
   },
   bar: {
     width: 3,
-    backgroundColor: colors.textSecondary,
+    backgroundColor: isMe ? (colors.textInverse === '#FFFFFF' ? 'rgba(255, 255, 255, 0.6)' : 'rgba(18, 18, 18, 0.6)') : colors.textSecondary,
     borderRadius: 1.5,
   },
   label: {
-    color: colors.textSecondary,
+    color: isMe ? colors.textInverse : colors.textSecondary,
     fontSize: typography.sizes.xs,
     fontFamily: typography.fontFamily.regular,
   },

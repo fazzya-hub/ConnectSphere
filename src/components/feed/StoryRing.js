@@ -2,8 +2,8 @@ import React from 'react';
 import { View, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Avatar from '../common/Avatar';
+import { useAppTheme } from '../../theme/themeContext';
 import { getLiveStatusType } from '../../utils/liveStatusFormatter';
-import { colors } from '../../theme';
 
 /**
  * Ring avatar dengan warna berdasarkan tipe live status.
@@ -11,13 +11,17 @@ import { colors } from '../../theme';
  * @param {{ photoURL: string|null, name: string, liveStatus: Object|null, size: number }} props
  */
 export default function StoryRing({ photoURL, name, liveStatus, size = 56 }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const statusType = getLiveStatusType(liveStatus);
+  const isCF = liveStatus?.isCloseFriendOnly === true;
 
-  const ringColor =
-    statusType === 'listening'
+  const ringColor = isCF
+    ? colors.success
+    : statusType === 'listening'
       ? colors.primary
       : statusType === 'location'
-        ? colors.secondary
+        ? (colors.secondary === '#9CA3AF' || colors.secondary === '#6B7280' ? '#A124FF' : colors.secondary)
         : colors.border;
 
   const iconName =
@@ -53,7 +57,7 @@ export default function StoryRing({ photoURL, name, liveStatus, size = 56 }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   ringOuter: {
     borderWidth: 2.5,
     alignItems: 'center',

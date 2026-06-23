@@ -28,7 +28,7 @@ import {
 import { useMutualFollowers } from '../../hooks/useSocialGraph';
 import { formatLiveStatus } from '../../utils/liveStatusFormatter';
 import useAuthStore from '../../store/authStore';
-import { colors } from '../../theme/colors';
+import { useAppTheme } from '../../theme/themeContext';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,6 +39,8 @@ const SCREEN_WIDTH = Dimensions.get('window').width;
 const GRID_ITEM_SIZE = Math.floor((SCREEN_WIDTH - GRID_GAP * (NUM_COLUMNS - 1)) / NUM_COLUMNS);
 
 export default function UserProfileScreen() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { user: currentUser } = useAuthStore();
   const navigation = useNavigation();
   const route = useRoute();
@@ -210,7 +212,10 @@ export default function UserProfileScreen() {
     );
   }
 
-  const liveText = profile.liveStatusEnabled ? formatLiveStatus(profile.liveStatus) : null;
+  const isCFVisible = !profile.liveStatus?.isCloseFriendOnly ||
+                      isSelf ||
+                      (profile.closeFriends && profile.closeFriends.includes(currentUser?.uid));
+  const liveText = (profile.liveStatusEnabled && isCFVisible) ? formatLiveStatus(profile.liveStatus) : null;
 
   return (
     <SafeAreaView style={styles.container} edges={['top', 'bottom']}>
@@ -361,7 +366,7 @@ export default function UserProfileScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   emptyText: { color: colors.textSecondary, fontSize: typography.sizes.md },

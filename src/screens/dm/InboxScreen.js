@@ -13,7 +13,8 @@ import { useConversations } from '../../hooks/useChat';
 import Avatar from '../../components/common/Avatar';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 function formatTime(timestamp) {
   if (!timestamp) return '';
@@ -43,6 +44,8 @@ function formatTime(timestamp) {
 }
 
 export default function InboxScreen() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const navigation = useNavigation();
   const currentUser = useAuthStore((state) => state.user);
   const { conversations, isLoading } = useConversations(currentUser?.uid);
@@ -130,7 +133,7 @@ export default function InboxScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

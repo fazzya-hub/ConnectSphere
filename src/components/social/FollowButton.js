@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { followUser, unfollowUser, cancelFollowRequest } from '../../services/socialService';
 import { useFollowStatus } from '../../hooks/useSocialGraph';
-import { colors } from '../../theme/colors';
+
 import { typography } from '../../theme/typography';
 import useAuthStore from '../../store/authStore';
+import { useAppTheme } from '../../theme/themeContext';
 
 /**
  * Tombol follow/unfollow dengan state real-time: following, pending, not_following.
@@ -13,6 +14,8 @@ import useAuthStore from '../../store/authStore';
  * @param {object} [style] - Custom style tambahan
  */
 export default function FollowButton({ targetUserId, isTargetPrivate = false, style }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { user } = useAuthStore();
   const { status, isLoading: statusLoading } = useFollowStatus(user?.uid, targetUserId);
   const [actionLoading, setActionLoading] = useState(false);
@@ -64,7 +67,7 @@ export default function FollowButton({ targetUserId, isTargetPrivate = false, st
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   btn: {
     paddingHorizontal: 16,
     paddingVertical: 8,

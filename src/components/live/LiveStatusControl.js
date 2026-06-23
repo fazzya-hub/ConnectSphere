@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -9,23 +9,32 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 import { useNowPlaying } from '../../hooks/useNowPlaying';
 import { formatLiveStatus } from '../../utils/liveStatusFormatter';
+import { useAppTheme } from '../../theme/themeContext';
 import {
   clearLiveStatus,
   setListeningStatus,
   setLiveStatusEnabled,
   setLocationStatus,
+  updateLiveStatusVisibility,
 } from '../../services/liveStatusService';
 
 export default function LiveStatusControl({ userId, liveStatus, liveStatusEnabled }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const [isSaving, setIsSaving] = useState(false);
   const { getCurrentLocation, isLoading: isLocating } = useCurrentLocation();
   const { getNativeTrack, openNotificationAccessSettings } = useNowPlaying();
+  const [isCloseFriendOnly, setIsCloseFriendOnly] = useState(liveStatus?.isCloseFriendOnly || false);
 
   const liveText = liveStatusEnabled ? formatLiveStatus(liveStatus) : null;
+
+  useEffect(() => {
+    setIsCloseFriendOnly(liveStatus?.isCloseFriendOnly || false);
+  }, [liveStatus]);
 
   async function handleToggle(nextValue) {
     setIsSaving(true);
@@ -34,6 +43,19 @@ export default function LiveStatusControl({ userId, liveStatus, liveStatusEnable
 
     if (error) {
       Alert.alert('Gagal', 'Live status tidak bisa diperbarui: ' + error);
+    }
+  }
+
+  async function handleCloseFriendToggle(value) {
+    setIsCloseFriendOnly(value);
+    if (liveStatus && liveStatusEnabled) {
+      setIsSaving(true);
+      const { error } = await updateLiveStatusVisibility(userId, value);
+      setIsSaving(false);
+      if (error) {
+        Alert.alert('Gagal', 'Gagal memperbarui visibilitas status: ' + error);
+        setIsCloseFriendOnly(!value);
+      }
     }
   }
 
@@ -46,7 +68,7 @@ export default function LiveStatusControl({ userId, liveStatus, liveStatusEnable
       return;
     }
 
-    const { error: saveError } = await setLocationStatus(userId, data);
+    const { error: saveError } = await setLocationStatus(userId, data, isCloseFriendOnly);
     setIsSaving(false);
     if (saveError) {
       Alert.alert('Gagal', 'Lokasi tidak bisa disimpan: ' + saveError);
@@ -58,7 +80,7 @@ export default function LiveStatusControl({ userId, liveStatus, liveStatusEnable
     const { data, error } = await getNativeTrack();
 
     if (data) {
-      const { error: saveError } = await setListeningStatus(userId, data);
+      const { error: saveError } = await setListeningStatus(userId, data, isCloseFriendOnly);
       setIsSaving(false);
 
       if (saveError) {
@@ -124,6 +146,25 @@ export default function LiveStatusControl({ userId, liveStatus, liveStatusEnable
         )}
       </View>
 
+      {liveStatusEnabled && (
+        <View style={styles.cfRow}>
+          <View style={styles.cfTextContainer}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <Ionicons name="star" size={14} color={colors.success} />
+              <Text style={styles.cfTitle}>Close Friends Saja</Text>
+            </View>
+            <Text style={styles.cfSubtitle}>Hanya teman terdekat yang bisa melihat status aktif.</Text>
+          </View>
+          <Switch
+            trackColor={{ false: colors.border, true: colors.success }}
+            thumbColor={colors.surface}
+            value={isCloseFriendOnly}
+            onValueChange={handleCloseFriendToggle}
+            disabled={isBusy}
+          />
+        </View>
+      )}
+
       {liveText ? (
         <View style={styles.activeStatus}>
           <Ionicons
@@ -168,7 +209,7 @@ export default function LiveStatusControl({ userId, liveStatus, liveStatusEnable
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.md,
@@ -243,5 +284,28 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: typography.sizes.sm,
     fontWeight: typography.weights.semibold,
+  },
+  cfRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: spacing.md,
+    paddingTop: spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  cfTextContainer: {
+    flex: 1,
+  },
+  cfTitle: {
+    color: colors.textPrimary,
+    fontSize: typography.sizes.sm,
+    fontWeight: typography.weights.semibold,
+  },
+  cfSubtitle: {
+    color: colors.textSecondary,
+    fontSize: typography.sizes.xs,
+    marginTop: 2,
   },
 });

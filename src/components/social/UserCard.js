@@ -1,9 +1,10 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
 import FollowButton from './FollowButton';
 import useAuthStore from '../../store/authStore';
+import { useAppTheme } from '../../theme/themeContext';
 
 /**
  * Komponen untuk menampilkan item User di daftar (Search, Followers, dll)
@@ -14,6 +15,8 @@ import useAuthStore from '../../store/authStore';
  * @param {React.ReactNode} [props.rightElement] - Elemen kustom di sebelah kanan (override follow button)
  */
 export default function UserCard({ user, onPress, showFollowButton = true, rightElement }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { user: currentUser } = useAuthStore();
   if (!user) return null;
 
@@ -46,7 +49,7 @@ export default function UserCard({ user, onPress, showFollowButton = true, right
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',

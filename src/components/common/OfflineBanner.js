@@ -1,10 +1,13 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
+import { useAppTheme } from '../../theme/themeContext';
 
 export default function OfflineBanner() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { isConnected, isInternetReachable } = useNetworkStatus();
   const isOffline = !isConnected || isInternetReachable === false;
 
@@ -18,7 +21,7 @@ export default function OfflineBanner() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,19 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
 import { formatDistanceToNow } from 'date-fns';
 import { id } from 'date-fns/locale';
 import { Ionicons } from '@expo/vector-icons';
-
-const ICON_MAP = {
-  like: { icon: 'heart', color: colors.liked },
-  comment: { icon: 'chatbubble', color: colors.primary },
-  follow: { icon: 'person-add', color: colors.success },
-  follow_request: { icon: 'person-add-outline', color: colors.warning },
-  follow_accept: { icon: 'checkmark-circle', color: colors.success },
-  dm: { icon: 'mail', color: colors.primary },
-};
+import { useAppTheme } from '../../theme/themeContext';
 
 const MSG_MAP = {
   like: 'menyukai postingan Anda.',
@@ -31,7 +23,19 @@ const MSG_MAP = {
  * @param {Function} props.onPress - Handler saat item ditekan
  */
 export default function NotificationItem({ notif, onPress }) {
-  const iconInfo = ICON_MAP[notif.type] || { icon: 'notifications', color: colors.textSecondary };
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
+
+  const iconMap = {
+    like: { icon: 'heart', color: colors.liked },
+    comment: { icon: 'chatbubble', color: colors.primary },
+    follow: { icon: 'person-add', color: colors.success },
+    follow_request: { icon: 'person-add-outline', color: colors.warning },
+    follow_accept: { icon: 'checkmark-circle', color: colors.success },
+    dm: { icon: 'mail', color: colors.primary },
+  };
+
+  const iconInfo = iconMap[notif.type] || { icon: 'notifications', color: colors.textSecondary };
   const msg = MSG_MAP[notif.type] || 'Ada aktivitas baru.';
   const actorName = notif.actorName || 'Seseorang';
   const timeText = notif.createdAt?.toDate
@@ -73,7 +77,7 @@ export default function NotificationItem({ notif, onPress }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',

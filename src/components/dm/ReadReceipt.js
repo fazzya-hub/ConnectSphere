@@ -1,8 +1,10 @@
 import React from 'react';
 import { Ionicons } from '@expo/vector-icons';
-import { colors } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
+
 
 export default function ReadReceipt({ status }) {
+  const { colors } = useAppTheme();
   const isRead = status === 'read';
 
   return (

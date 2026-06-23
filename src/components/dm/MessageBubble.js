@@ -1,9 +1,18 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 import AudioNote from './AudioNote';
 import ReadReceipt from './ReadReceipt';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  runOnJS,
+} from 'react-native-reanimated';
+
 
 const { width } = Dimensions.get('window');
 const MAX_BUBBLE_WIDTH = width * 0.75;
@@ -27,9 +36,13 @@ function getReplyPreview(reply) {
 export default function MessageBubble({
   message,
   currentUserId,
+  partnerUsername = '',
   onLongPress = null,
   onReply = null,
 }) {
+  const { colors, mode } = useAppTheme();
+  const styles = useMemo(() => getStyles(colors, mode), [colors, mode]);
+
   const { senderId, type, text, imageUrl, audioUrl, status, createdAt, reactions, replyTo } = message;
   const isMe = senderId === currentUserId;
 
@@ -37,13 +50,40 @@ export default function MessageBubble({
     (emoji) => reactions[emoji] && reactions[emoji].length > 0
   );
 
+  const translateX = useSharedValue(0);
+
+  const handleReply = () => {
+    if (onReply) {
+      onReply(message);
+    }
+  };
+
+  const panGesture = Gesture.Pan()
+    .activeOffsetX([-10, 10])
+    .onUpdate((event) => {
+      if (event.translationX > 0 && event.translationX < 80) {
+        translateX.value = event.translationX;
+      }
+    })
+    .onEnd((event) => {
+      if (event.translationX > 40) {
+        runOnJS(handleReply)();
+      }
+      translateX.value = withSpring(0);
+    });
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateX: translateX.value }],
+  }));
+
   return (
-    <View style={[styles.container, isMe ? styles.containerRight : styles.containerLeft]}>
-      <TouchableOpacity
-        activeOpacity={0.86}
-        onLongPress={() => onLongPress?.(message)}
-        onPress={() => onReply?.(message)}
-      >
+    <GestureDetector gesture={panGesture}>
+      <Animated.View style={[styles.container, isMe ? styles.containerRight : styles.containerLeft, animatedStyle]}>
+        <TouchableOpacity
+          activeOpacity={0.86}
+          onLongPress={() => onLongPress?.(message)}
+          onPress={() => onReply?.(message)}
+        >
         <View
           style={[
             styles.bubble,
@@ -57,7 +97,7 @@ export default function MessageBubble({
                 style={[styles.replySender, isMe ? styles.replySenderMe : styles.replySenderOther]}
                 numberOfLines={1}
               >
-                {replyTo.senderId === currentUserId ? 'Kamu' : 'Lawan Bicara'}
+                {replyTo.senderId === currentUserId ? 'Kamu' : (partnerUsername ? `@${partnerUsername}` : 'Lawan Bicara')}
               </Text>
               <Text style={styles.replyText} numberOfLines={1}>
                 {getReplyPreview(replyTo)}
@@ -74,7 +114,7 @@ export default function MessageBubble({
             />
           )}
 
-          {type === 'audio' && audioUrl && <AudioNote audioUrl={audioUrl} />}
+          {type === 'audio' && audioUrl && <AudioNote audioUrl={audioUrl} isMe={isMe} />}
 
           {type === 'text' && text && (
             <Text style={[styles.text, isMe ? styles.textMe : styles.textOther]}>
@@ -112,11 +152,12 @@ export default function MessageBubble({
           </View>
         )}
       </TouchableOpacity>
-    </View>
+      </Animated.View>
+    </GestureDetector>
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors, mode) => StyleSheet.create({
   container: {
     width: '100%',
     marginVertical: spacing.xxs,
@@ -172,14 +213,15 @@ const styles = StyleSheet.create({
     paddingLeft: spacing.xs,
     marginBottom: spacing.xs,
     paddingVertical: 2,
-    backgroundColor: 'rgba(0,0,0,0.1)',
     borderRadius: 4,
   },
   replyContainerMe: {
     borderLeftColor: colors.textInverse,
+    backgroundColor: mode === 'light' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)',
   },
   replyContainerOther: {
     borderLeftColor: colors.primary,
+    backgroundColor: mode === 'light' ? 'rgba(0, 0, 0, 0.05)' : 'rgba(255, 255, 255, 0.05)',
   },
   replySender: {
     fontSize: typography.sizes.xs,
@@ -208,7 +250,7 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.regular,
   },
   timeMe: {
-    color: 'rgba(18, 18, 18, 0.6)',
+    color: mode === 'light' ? 'rgba(255, 255, 255, 0.65)' : 'rgba(18, 18, 18, 0.6)',
   },
   timeOther: {
     color: colors.textSecondary,

@@ -9,12 +9,13 @@ import ProfileScreen from '../screens/main/ProfileScreen';
 import NotificationBadge from '../components/notification/NotificationBadge';
 import { useUnreadNotifCount } from '../hooks/useNotifications';
 import useAuthStore from '../store/authStore';
-import { colors } from '../theme';
+import { useAppTheme } from '../theme/themeContext';
 
 const Tab = createBottomTabNavigator();
 
 export default function MainTab() {
   const { user } = useAuthStore();
+  const { colors } = useAppTheme();
   useUnreadNotifCount(user?.uid); // subscribe realtime, update Zustand store
 
   return (

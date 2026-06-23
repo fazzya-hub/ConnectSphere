@@ -2,7 +2,8 @@ import React from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useNowPlaying } from '../../hooks/useNowPlaying';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 /**
  * Komponen picker lagu untuk Live Status.
@@ -12,6 +13,8 @@ import { colors, typography, spacing } from '../../theme';
  * @param {Function} onBack - Dipanggil saat user ingin kembali
  */
 export default function NowPlayingPicker({ visible = true, onDone, onBack }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { nowPlaying, permissionGranted, isLoading, requestPermission } = useNowPlaying(visible);
 
   function handleSelect(songInfo) {
@@ -94,7 +97,7 @@ export default function NowPlayingPicker({ visible = true, onDone, onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     padding: spacing.md,
     alignItems: 'center',

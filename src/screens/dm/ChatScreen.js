@@ -34,9 +34,12 @@ import AudioNote from '../../components/dm/AudioNote';
 import EmojiReactionPicker from '../../components/dm/EmojiReactionPicker';
 import TypingIndicator from '../../components/dm/TypingIndicator';
 import Loader from '../../components/common/Loader';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 export default function ChatScreen() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const route = useRoute();
   const navigation = useNavigation();
   const currentUser = useAuthStore((state) => state.user);
@@ -271,6 +274,7 @@ export default function ChatScreen() {
                 <MessageBubble
                   message={item}
                   currentUserId={currentUser.uid}
+                  partnerUsername={partner?.username}
                   onLongPress={setSelectedMessage}
                   onReply={setReplyTo}
                 />
@@ -293,7 +297,9 @@ export default function ChatScreen() {
         {replyTo && (
           <View style={styles.replyPreview}>
             <View style={styles.replyPreviewTextWrap}>
-              <Text style={styles.replyPreviewLabel}>Membalas</Text>
+              <Text style={styles.replyPreviewLabel}>
+                Membalas {replyTo.senderId === currentUser?.uid ? 'Kamu' : (partner?.username ? `@${partner.username}` : 'Lawan Bicara')}
+              </Text>
               <Text style={styles.replyPreviewText} numberOfLines={1}>
                 {replyTo.type === 'text' ? replyTo.text : replyTo.type === 'image' ? 'Gambar' : 'Pesan Suara'}
               </Text>
@@ -348,7 +354,7 @@ export default function ChatScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,

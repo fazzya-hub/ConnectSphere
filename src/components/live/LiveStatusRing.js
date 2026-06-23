@@ -3,12 +3,15 @@ import { View, Text, ScrollView, Pressable, StyleSheet } from 'react-native';
 import StoryRing from '../feed/StoryRing';
 import { formatLiveStatus } from '../../utils/liveStatusFormatter';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 /**
  * Komponen untuk menampilkan bubble status (seperti IG Notes) di atas avatar.
  */
 function StatusBubble({ status }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   if (!status) return null;
   const text = formatLiveStatus(status);
   if (!text) return null;
@@ -55,6 +58,8 @@ export default function LiveStatusRing({
   onPressAdd,
   onPressFollowing,
 }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const activeFollowing = followingWithStatus.filter(
     (item) => formatLiveStatus(item.liveStatus) !== null && (item.uid || item.id) !== currentUser?.uid
   );
@@ -117,7 +122,7 @@ export default function LiveStatusRing({
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     paddingVertical: spacing.sm,
     borderBottomWidth: 1,

@@ -4,9 +4,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../hooks/useAuth';
 import { useCurrentLocation } from '../../hooks/useCurrentLocation';
 import { setLocationStatus } from '../../services/liveStatusService';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 export default function LocationPicker({ onDone, onBack }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { user } = useAuth();
   const { getCurrentLocation, isLoading } = useCurrentLocation();
   const [placeName, setPlaceName] = useState('');
@@ -105,7 +108,7 @@ export default function LocationPicker({ onDone, onBack }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     paddingTop: spacing.xs,
   },

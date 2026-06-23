@@ -24,9 +24,10 @@ import {
   subscribeToPost,
 } from '../../services/firestoreService';
 import { formatRelativeTime } from '../../utils/dateFormatter';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
-function CommentItem({ comment }) {
+function CommentItem({ comment, styles }) {
   const [author, setAuthor] = useState(null);
 
   useEffect(() => {
@@ -52,6 +53,8 @@ function CommentItem({ comment }) {
 }
 
 export default function PostDetailScreen() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const route = useRoute();
   const { user } = useAuth();
   const { postId, post: initialPost } = route.params;
@@ -154,7 +157,7 @@ export default function PostDetailScreen() {
             <Text style={styles.noComments}>Belum ada komentar</Text>
           ) : (
             comments.map((comment) => (
-              <CommentItem key={comment.id} comment={comment} />
+              <CommentItem key={comment.id} comment={comment} styles={styles} />
             ))
           )}
         </View>
@@ -187,7 +190,7 @@ export default function PostDetailScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colors.background,

@@ -13,11 +13,13 @@ import { usePeopleYouMayKnow, useFollowList } from '../../hooks/useSocialGraph';
 import useAuthStore from '../../store/authStore';
 import { searchUsers, getAllBlockedUserIds } from '../../services/socialService';
 import { searchPosts } from '../../services/firestoreService';
-import { colors } from '../../theme/colors';
+import { useAppTheme } from '../../theme/themeContext';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 
 export default function ExploreScreen() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { user } = useAuthStore();
   const navigation = useNavigation();
   const [query, setQuery] = useState('');
@@ -168,7 +170,7 @@ export default function ExploreScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   safe: {
     flex: 1,
     backgroundColor: colors.background,

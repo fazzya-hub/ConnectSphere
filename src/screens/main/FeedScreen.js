@@ -13,9 +13,11 @@ import { useLiveStatus } from '../../hooks/useLiveStatus';
 import { getFollowingIds } from '../../services/firestoreService';
 import LiveStatusRing from '../../components/live/LiveStatusRing';
 import LiveStatusPickerModal from '../../components/live/LiveStatusPickerModal';
-import { colors } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 export default function FeedScreen() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { user } = useAuth();
   const [followingIds, setFollowingIds] = useState([]);
   const [pickerVisible, setPickerVisible] = useState(false);
@@ -87,7 +89,7 @@ export default function FeedScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.background,

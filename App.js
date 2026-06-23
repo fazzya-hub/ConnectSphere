@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useFonts } from 'expo-font';
 import {
   Sora_400Regular,
@@ -16,8 +17,8 @@ import OfflineBanner from './src/components/common/OfflineBanner';
 import useAuthStore from './src/store/authStore';
 import { subscribeToAuthState } from './src/services/authService';
 import { registerForPushNotificationsAsync, saveFCMToken } from './src/services/notificationService';
-import { ThemeProvider } from './src/theme/themeContext';
-import { colors } from './src/theme';
+import { ThemeProvider, lightColors, darkColors } from './src/theme/themeContext';
+import useThemeStore from './src/store/themeStore';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -85,19 +86,25 @@ export default function App() {
     };
   }, []);
 
+  const themeMode = useThemeStore((state) => state.mode);
+  const isDark = themeMode === 'dark';
+  const themeColors = isDark ? darkColors : lightColors;
+
   if (!fontsLoaded) {
     return null;
   }
 
   return (
-    <SafeAreaProvider>
-      <ThemeProvider>
-        <NavigationContainer ref={navigationRef}>
-          <OfflineBanner />
-          <RootNavigator />
-          <StatusBar style="light" backgroundColor={colors.background} />
-        </NavigationContainer>
-      </ThemeProvider>
-    </SafeAreaProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider>
+          <NavigationContainer ref={navigationRef}>
+            <OfflineBanner />
+            <RootNavigator />
+            <StatusBar style={isDark ? "light" : "dark"} backgroundColor={themeColors.background} />
+          </NavigationContainer>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }

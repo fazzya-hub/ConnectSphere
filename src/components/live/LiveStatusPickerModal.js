@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,14 +6,16 @@ import {
   Pressable,
   StyleSheet,
   Dimensions,
+  Switch,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import NowPlayingPicker from './NowPlayingPicker';
 import LocationPicker from './LocationPicker';
-import { clearLiveStatus, setListeningStatus } from '../../services/liveStatusService';
+import { clearLiveStatus, setListeningStatus, setLocationStatus } from '../../services/liveStatusService';
 import { formatLiveStatus } from '../../utils/liveStatusFormatter';
 import { useAuth } from '../../hooks/useAuth';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -24,8 +26,17 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
  */
 export default function LiveStatusPickerModal({ visible, onClose, currentLiveStatus }) {
   const { user } = useAuth();
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const [activePicker, setActivePicker] = useState(null); // 'listening' | 'location' | null
   const [isClearing, setIsClearing] = useState(false);
+  const [isCloseFriendOnly, setIsCloseFriendOnly] = useState(false);
+
+  useEffect(() => {
+    if (visible) {
+      setIsCloseFriendOnly(currentLiveStatus?.isCloseFriendOnly || false);
+    }
+  }, [visible, currentLiveStatus]);
 
   const hasActiveStatus = formatLiveStatus(currentLiveStatus) !== null;
 
@@ -42,12 +53,20 @@ export default function LiveStatusPickerModal({ visible, onClose, currentLiveSta
     }
   }
 
-  async function handlePickerDone(songInfo) {
-    if (songInfo && user?.uid && activePicker === 'listening') {
-      try {
-        await setListeningStatus(user.uid, songInfo);
-      } catch (e) {
-        console.error('[LiveStatusPickerModal] set listening status error:', e);
+  async function handlePickerDone(info) {
+    if (info && user?.uid) {
+      if (activePicker === 'listening') {
+        try {
+          await setListeningStatus(user.uid, info, isCloseFriendOnly);
+        } catch (e) {
+          console.error('[LiveStatusPickerModal] set listening status error:', e);
+        }
+      } else if (activePicker === 'location') {
+        try {
+          await setLocationStatus(user.uid, info, isCloseFriendOnly);
+        } catch (e) {
+          console.error('[LiveStatusPickerModal] set location status error:', e);
+        }
       }
     }
     setActivePicker(null);
@@ -82,6 +101,27 @@ export default function LiveStatusPickerModal({ visible, onClose, currentLiveSta
               <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
                 Bagikan aktivitas kamu ke followers
               </Text>
+
+              {/* Option: Close Friends Only Toggle */}
+              <View style={[styles.option, { borderBottomColor: colors.border, justifyContent: 'space-between' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <View style={[styles.optionIcon, { backgroundColor: 'rgba(35, 197, 94, 0.15)' }]}>
+                    <Ionicons name="star" size={22} color={colors.success} />
+                  </View>
+                  <View style={styles.optionInfo}>
+                    <Text style={[styles.optionLabel, { color: colors.textPrimary }]}>Close Friends Saja</Text>
+                    <Text style={[styles.optionDesc, { color: colors.textSecondary }]}>
+                      Hanya teman terdekat yang bisa melihat
+                    </Text>
+                  </View>
+                </View>
+                <Switch
+                  value={isCloseFriendOnly}
+                  onValueChange={setIsCloseFriendOnly}
+                  trackColor={{ false: colors.border, true: colors.success }}
+                  thumbColor={colors.surface}
+                />
+              </View>
 
               {/* Option: Lagu */}
               <Pressable
@@ -145,7 +185,7 @@ export default function LiveStatusPickerModal({ visible, onClose, currentLiveSta
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   overlay: {
     flex: 1,
     justifyContent: 'flex-end',

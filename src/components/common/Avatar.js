@@ -1,8 +1,11 @@
 import { View, Text, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
-import { colors, typography } from '../../theme';
+import { typography } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 
 export default function Avatar({ uri, name, size = 40 }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const fallback = name?.charAt(0)?.toUpperCase() || '?';
 
   if (uri) {
@@ -22,7 +25,7 @@ export default function Avatar({ uri, name, size = 40 }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   image: {
     backgroundColor: colors.surfaceLight,
   },

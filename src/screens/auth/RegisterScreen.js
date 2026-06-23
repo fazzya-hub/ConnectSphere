@@ -17,11 +17,14 @@ import Button from '../../components/common/Button';
 import Input from '../../components/common/Input';
 import { uploadProfilePhoto } from '../../services/storageService';
 import { updateUserProfile } from '../../services/authService';
-import { colors, typography, spacing } from '../../theme';
+import { typography, spacing } from '../../theme';
+import { useAppTheme } from '../../theme/themeContext';
 import { AUTH_STRINGS, AUTH_ERRORS, VALIDATION_ERRORS } from '../../utils/constants';
 import { isValidEmail, isValidUsername, isValidPassword } from '../../utils/validators';
 
 export default function RegisterScreen({ navigation }) {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { register } = useAuth();
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -182,7 +185,7 @@ export default function RegisterScreen({ navigation }) {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   flex: { flex: 1, backgroundColor: colors.background },
   container: {
     flexGrow: 1,

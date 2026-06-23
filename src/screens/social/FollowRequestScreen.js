@@ -10,7 +10,7 @@ import UserCard from '../../components/social/UserCard';
 import Loader from '../../components/common/Loader';
 import EmptyState from '../../components/common/EmptyState';
 import useAuthStore from '../../store/authStore';
-import { colors } from '../../theme/colors';
+import { useAppTheme } from '../../theme/themeContext';
 import { typography } from '../../theme/typography';
 import { spacing } from '../../theme/spacing';
 
@@ -19,6 +19,8 @@ import { spacing } from '../../theme/spacing';
  * User bisa Accept atau Decline.
  */
 export default function FollowRequestScreen() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const { user } = useAuthStore();
   const navigation = useNavigation();
   const { requests, isLoading } = useFollowRequests(user?.uid);
@@ -81,7 +83,7 @@ export default function FollowRequestScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   header: {
     flexDirection: 'row',

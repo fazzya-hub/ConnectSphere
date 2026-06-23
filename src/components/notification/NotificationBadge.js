@@ -1,13 +1,16 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import useNotificationStore from '../../store/notificationStore';
-import { colors } from '../../theme/colors';
+import { useAppTheme } from '../../theme/themeContext';
+
 
 /**
  * Badge merah yang menampilkan jumlah notifikasi belum dibaca.
  * Otomatis tersembunyi jika count = 0.
  */
 export default function NotificationBadge() {
+  const { colors } = useAppTheme();
+  const styles = getStyles(colors);
   const unreadCount = useNotificationStore((s) => s.unreadCount);
 
   if (unreadCount === 0) return null;
@@ -19,7 +22,7 @@ export default function NotificationBadge() {
   );
 }
 
-const styles = StyleSheet.create({
+const getStyles = (colors) => StyleSheet.create({
   badge: {
     position: 'absolute',
     top: -4,
