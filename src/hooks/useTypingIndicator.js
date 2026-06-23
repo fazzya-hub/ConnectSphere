@@ -4,17 +4,28 @@ import { db } from '../config/firebase';
 import { updateTypingStatus } from '../services/chatService';
 
 const TYPING_TIMEOUT_MS = 3000;
+const TYPING_DEBOUNCE_MS = 300;
 
+/**
+ * Mengelola status typing user saat ini dengan debounce 300ms.
+ * @param {string} conversationId - ID dokumen percakapan
+ * @param {string} currentUserId - UID user yang sedang login
+ * @returns {{ handleTyping: Function }}
+ */
 export function useTypingIndicator(conversationId, currentUserId) {
   const typingTimeoutRef = useRef(null);
+  const typingDebounceRef = useRef(null);
   const isTypingRef = useRef(false);
 
   const handleTyping = () => {
     if (!conversationId || !currentUserId) return;
 
     if (!isTypingRef.current) {
-      isTypingRef.current = true;
-      updateTypingStatus(conversationId, currentUserId, true);
+      clearTimeout(typingDebounceRef.current);
+      typingDebounceRef.current = setTimeout(() => {
+        isTypingRef.current = true;
+        updateTypingStatus(conversationId, currentUserId, true);
+      }, TYPING_DEBOUNCE_MS);
     }
 
     if (typingTimeoutRef.current) {
@@ -32,6 +43,9 @@ export function useTypingIndicator(conversationId, currentUserId) {
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
+      if (typingDebounceRef.current) {
+        clearTimeout(typingDebounceRef.current);
+      }
 
       if (isTypingRef.current && conversationId && currentUserId) {
         updateTypingStatus(conversationId, currentUserId, false);
@@ -42,6 +56,12 @@ export function useTypingIndicator(conversationId, currentUserId) {
   return { handleTyping };
 }
 
+/**
+ * Subscribe realtime ke status typing user lain dalam percakapan.
+ * @param {string} conversationId - ID dokumen percakapan
+ * @param {string} currentUserId - UID user yang sedang login
+ * @returns {{ isOtherUserTyping: boolean }}
+ */
 export function useOtherTyping(conversationId, currentUserId) {
   const [isOtherUserTyping, setIsOtherUserTyping] = useState(false);
 

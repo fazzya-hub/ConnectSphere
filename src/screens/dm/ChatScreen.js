@@ -23,11 +23,16 @@ import {
   createConversation,
   getConversationById,
   markMessagesAsRead,
-  getUserProfile
+  getUserProfile,
+  addReaction,
+  removeReaction
 } from '../../services/chatService';
-import { uploadChatImage } from '../../services/storageService';
+import { uploadChatAudio, uploadChatImage } from '../../services/storageService';
 import Avatar from '../../components/common/Avatar';
 import MessageBubble from '../../components/dm/MessageBubble';
+import AudioNote from '../../components/dm/AudioNote';
+import EmojiReactionPicker from '../../components/dm/EmojiReactionPicker';
+import TypingIndicator from '../../components/dm/TypingIndicator';
 import Loader from '../../components/common/Loader';
 import { colors, typography, spacing } from '../../theme';
 
@@ -43,6 +48,8 @@ export default function ChatScreen() {
   const [inputText, setInputText] = useState('');
   const [isInitializing, setIsInitializing] = useState(!initialConversationId || (initialConversationId && !initialPartner));
   const [isSendingMedia, setIsSendingMedia] = useState(false);
+  const [replyTo, setReplyTo] = useState(null);
+  const [selectedMessage, setSelectedMessage] = useState(null);
 
   const { messages, isLoading: isChatLoading } = useChat(conversationId);
   const { handleTyping } = useTypingIndicator(conversationId, currentUser?.uid);
@@ -111,11 +118,13 @@ export default function ChatScreen() {
     }
 
     const textToSend = inputText.trim();
+    const quote = replyTo;
     setInputText('');
+    setReplyTo(null);
 
     const { error } = await sendMessage(
       conversationId,
-      { type: 'text', text: textToSend },
+      { type: 'text', text: textToSend, replyTo: quote },
       currentUser.uid,
       recipientId
     );
@@ -124,6 +133,7 @@ export default function ChatScreen() {
       Alert.alert('Gagal Mengirim', 'Pesan tidak terkirim: ' + error);
 
       setInputText(textToSend);
+      setReplyTo(quote);
     }
   };
 
@@ -158,7 +168,7 @@ export default function ChatScreen() {
 
       const { error: sendError } = await sendMessage(
         conversationId,
-        { type: 'image', imageUrl },
+        { type: 'image', imageUrl, replyTo },
         currentUser.uid,
         recipientId
       );
@@ -166,10 +176,48 @@ export default function ChatScreen() {
       if (sendError) {
         throw new Error(sendError);
       }
+      setReplyTo(null);
     } catch (error) {
       Alert.alert('Gagal Mengirim Gambar', error.message);
     } finally {
       setIsSendingMedia(false);
+    }
+  };
+
+  const handleSendAudio = async (localUri) => {
+    try {
+      if (!conversationId || !currentUser?.uid || !recipientId) {
+        Alert.alert('Gagal Mengirim', 'Percakapan belum siap. Coba buka ulang chat ini.');
+        return;
+      }
+
+      setIsSendingMedia(true);
+      const { data: audioUrl, error: uploadError } = await uploadChatAudio(conversationId, localUri);
+      if (uploadError) throw new Error(uploadError);
+
+      const { error: sendError } = await sendMessage(
+        conversationId,
+        { type: 'audio', audioUrl, replyTo },
+        currentUser.uid,
+        recipientId
+      );
+      if (sendError) throw new Error(sendError);
+      setReplyTo(null);
+    } catch (error) {
+      Alert.alert('Gagal Mengirim Audio', error.message);
+    } finally {
+      setIsSendingMedia(false);
+    }
+  };
+
+  const handleSelectReaction = async (emoji) => {
+    if (!selectedMessage || !conversationId || !currentUser?.uid) return;
+    const reactedUsers = selectedMessage.reactions?.[emoji] || [];
+    const serviceCall = reactedUsers.includes(currentUser.uid) ? removeReaction : addReaction;
+    const { error } = await serviceCall(conversationId, selectedMessage.id, currentUser.uid, emoji);
+    setSelectedMessage(null);
+    if (error) {
+      Alert.alert('Gagal', 'Reaction tidak dapat disimpan: ' + error);
     }
   };
 
@@ -223,21 +271,39 @@ export default function ChatScreen() {
                 <MessageBubble
                   message={item}
                   currentUserId={currentUser.uid}
+                  onLongPress={setSelectedMessage}
+                  onReply={setReplyTo}
                 />
               )}
               contentContainerStyle={styles.messageListContainer}
             />
           )}
 
+          <TypingIndicator visible={isOtherUserTyping} />
+
           {isSendingMedia && (
             <View style={styles.mediaLoadingOverlay}>
               <ActivityIndicator size="small" color={colors.primary} />
-              <Text style={styles.mediaLoadingText}>Mengunggah gambar...</Text>
+              <Text style={styles.mediaLoadingText}>Mengunggah media...</Text>
             </View>
           )}
         </View>
 
         {}
+        {replyTo && (
+          <View style={styles.replyPreview}>
+            <View style={styles.replyPreviewTextWrap}>
+              <Text style={styles.replyPreviewLabel}>Membalas</Text>
+              <Text style={styles.replyPreviewText} numberOfLines={1}>
+                {replyTo.type === 'text' ? replyTo.text : replyTo.type === 'image' ? 'Gambar' : 'Pesan Suara'}
+              </Text>
+            </View>
+            <TouchableOpacity onPress={() => setReplyTo(null)} style={styles.replyClose}>
+              <Ionicons name="close" size={18} color={colors.textSecondary} />
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.inputBar}>
           <TouchableOpacity
             style={styles.iconButton}
@@ -246,6 +312,8 @@ export default function ChatScreen() {
           >
             <Ionicons name="image-outline" size={24} color={colors.primary} />
           </TouchableOpacity>
+
+          <AudioNote isComposer onRecorded={handleSendAudio} />
 
           <View style={styles.textInputContainer}>
             <TextInput
@@ -271,6 +339,11 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+      <EmojiReactionPicker
+        visible={!!selectedMessage}
+        onClose={() => setSelectedMessage(null)}
+        onSelect={handleSelectReaction}
+      />
     </SafeAreaView>
   );
 }
@@ -384,5 +457,33 @@ const styles = StyleSheet.create({
     color: colors.textPrimary,
     fontSize: typography.sizes.sm,
     fontFamily: typography.fontFamily.regular,
+  },
+  replyPreview: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.surfaceLight,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  replyPreviewTextWrap: {
+    flex: 1,
+    borderLeftWidth: 3,
+    borderLeftColor: colors.primary,
+    paddingLeft: spacing.xs,
+  },
+  replyPreviewLabel: {
+    color: colors.primary,
+    fontSize: typography.sizes.xs,
+    fontFamily: typography.fontFamily.semibold,
+  },
+  replyPreviewText: {
+    color: colors.textSecondary,
+    fontSize: typography.sizes.sm,
+    fontFamily: typography.fontFamily.regular,
+  },
+  replyClose: {
+    padding: spacing.xs,
   },
 });
