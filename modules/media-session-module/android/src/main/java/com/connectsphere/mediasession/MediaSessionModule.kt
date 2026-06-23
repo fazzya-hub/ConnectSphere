@@ -2,10 +2,12 @@ package com.connectsphere.mediasession
 
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.media.MediaMetadata
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
 import android.media.session.PlaybackState
+import android.provider.Settings
 import expo.modules.kotlin.exception.Exceptions
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
@@ -20,6 +22,26 @@ class MediaSessionModule : Module() {
     AsyncFunction("getCurrentTrack") {
       return@AsyncFunction getCurrentTrack()
     }
+
+    AsyncFunction("hasNotificationAccess") {
+      return@AsyncFunction isNotificationServiceEnabled(context)
+    }
+
+    AsyncFunction("openNotificationAccessSettings") {
+      val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+      context.startActivity(intent)
+      return@AsyncFunction true
+    }
+  }
+
+  private fun isNotificationServiceEnabled(context: Context): Boolean {
+    val flat = Settings.Secure.getString(
+      context.contentResolver,
+      "enabled_notification_listeners"
+    ) ?: return false
+    val packageName = context.packageName
+    return flat.split(":").any { it.contains(packageName) }
   }
 
   private fun getCurrentTrack(): Map<String, String>? {

@@ -23,7 +23,7 @@ import {
 export default function LiveStatusControl({ userId, liveStatus, liveStatusEnabled }) {
   const [isSaving, setIsSaving] = useState(false);
   const { getCurrentLocation, isLoading: isLocating } = useCurrentLocation();
-  const { getNativeTrack } = useNowPlaying();
+  const { getNativeTrack, openNotificationAccessSettings } = useNowPlaying();
 
   const liveText = liveStatusEnabled ? formatLiveStatus(liveStatus) : null;
 
@@ -69,8 +69,25 @@ export default function LiveStatusControl({ userId, liveStatus, liveStatusEnable
 
     setIsSaving(false);
 
+    if (error === 'Permission not granted') {
+      Alert.alert(
+        'Izin Akses Diperlukan',
+        'ConnectSphere memerlukan akses Notification Listener untuk mendeteksi lagu yang sedang diputar di perangkat kamu (Spotify, YouTube Music, dll).',
+        [
+          { text: 'Batal', style: 'cancel' },
+          {
+            text: 'Buka Pengaturan',
+            onPress: async () => {
+              await openNotificationAccessSettings();
+            },
+          },
+        ]
+      );
+      return;
+    }
+
     if (error) {
-      Alert.alert('MediaSession Gagal', 'Lagu Android tidak bisa dibaca. Pastikan Notification Access sudah aktif.');
+      Alert.alert('MediaSession Gagal', 'Lagu Android tidak bisa dibaca: ' + error);
       return;
     }
 

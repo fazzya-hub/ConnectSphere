@@ -33,6 +33,36 @@ export async function getCurrentTrack() {
   return nativeModule.getCurrentTrack();
 }
 
+/**
+ * Cek apakah user sudah grant izin Notification Listener.
+ * @returns {Promise<boolean>}
+ */
+export async function hasNotificationAccess() {
+  const nativeModule = getNativeModule();
+
+  if (!nativeModule?.hasNotificationAccess) {
+    return false;
+  }
+
+  return nativeModule.hasNotificationAccess();
+}
+
+/**
+ * Buka halaman Settings > Notification Access agar user bisa grant izin.
+ * @returns {Promise<boolean>}
+ */
+export async function openNotificationAccessSettings() {
+  const nativeModule = getNativeModule();
+
+  if (!nativeModule?.openNotificationAccessSettings) {
+    return false;
+  }
+
+  return nativeModule.openNotificationAccessSettings();
+}
+
 export default {
   getCurrentTrack,
+  hasNotificationAccess,
+  openNotificationAccessSettings,
 };
