@@ -6,7 +6,7 @@
 | 1 | Faraz Thifal | 2410501022 |
 | 2 | Muhammad Kevin | 2410501040 |
 | 3 | Khania Ramadhani F | 2410501027 |
-| 4 | [Nama Anggota 4] | [NIM Anggota 4] |
+| 4 | Erastus El Nandari | 2410501030 |
 
 ## Tema Yang Dipilih
 
