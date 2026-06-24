@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { FlatList, StyleSheet } from 'react-native';
+import { FlatList, StyleSheet, ActivityIndicator, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect } from '@react-navigation/native';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -23,7 +23,8 @@ export default function FeedScreen() {
   const [pickerVisible, setPickerVisible] = useState(false);
   const [currentUserProfile, setCurrentUserProfile] = useState(null);
 
-  const { posts, fetchPosts, isLoading, isRefreshing } = useFeed(followingIds);
+  const { posts, fetchPosts, loadMore, isLoading, isRefreshing, isLoadingMore, hasMore } =
+    useFeed(followingIds);
   const { statuses: liveStatuses } = useLiveStatus(followingIds.filter((id) => id !== user?.uid));
 
   useFocusEffect(
@@ -50,7 +51,30 @@ export default function FeedScreen() {
 
   if (!user) return <Loader />;
 
-  const currentUserLiveStatus = currentUserProfile?.liveStatusEnabled ? currentUserProfile?.liveStatus : null;
+  const currentUserLiveStatus = currentUserProfile?.liveStatusEnabled
+    ? currentUserProfile?.liveStatus
+    : null;
+
+  const handleEndReached = () => {
+    if (!isLoadingMore && hasMore) {
+      loadMore();
+    }
+  };
+
+  const renderFooter = () => {
+    if (isLoadingMore) {
+      return (
+        <View style={styles.footerLoader}>
+          <ActivityIndicator size="small" color={colors.primary} />
+        </View>
+      );
+    }
+    // Semua post sudah dimuat
+    if (!hasMore && posts.length > 0) {
+      return <View style={styles.footerEnd} />;
+    }
+    return null;
+  };
 
   return (
     <SafeAreaView style={styles.container} edges={['left', 'right']}>
@@ -71,13 +95,17 @@ export default function FeedScreen() {
         maxToRenderPerBatch={5}
         windowSize={10}
         initialNumToRender={5}
-        ListFooterComponent={isLoading && !isRefreshing ? <Loader size="small" /> : null}
+        onEndReached={handleEndReached}
+        onEndReachedThreshold={0.4}
+        ListFooterComponent={
+          isLoading && !isRefreshing ? <Loader size="small" /> : renderFooter()
+        }
         refreshing={isRefreshing}
         onRefresh={() => fetchPosts(true)}
         ListEmptyComponent={
-          !isLoading && !isRefreshing
-            ? <EmptyState message="Belum ada post" />
-            : null
+          !isLoading && !isRefreshing ? (
+            <EmptyState message="Belum ada post" />
+          ) : null
         }
       />
       <LiveStatusPickerModal
@@ -89,9 +117,18 @@ export default function FeedScreen() {
   );
 }
 
-const getStyles = (colors) => StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-});
+const getStyles = (colors) =>
+  StyleSheet.create({
+    container: {
+      flex: 1,
+      backgroundColor: colors.background,
+    },
+    footerLoader: {
+      paddingVertical: 20,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    footerEnd: {
+      paddingVertical: 24,
+    },
+  });
